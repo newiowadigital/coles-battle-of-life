@@ -1,0 +1,3256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Battle of Life</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Orbitron', monospace, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0e0a;
+        }
+
+        /* Floating Controls */
+        /* HUD Container - Minecraft Style */
+        .hud-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(to top, rgba(10, 20, 10, 0.95), rgba(10, 20, 10, 0.7));
+            border-top: 3px solid #33ff00;
+            box-shadow: 0 -5px 30px rgba(51, 255, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 0 20px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .floating-btn {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            background: rgba(10, 20, 10, 0.9);
+            border: 2px solid #33ff00;
+            box-shadow: 
+                0 0 25px rgba(51, 255, 0, 0.8),
+                0 0 50px rgba(51, 255, 0, 0.4),
+                inset 0 0 15px rgba(51, 255, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 24px;
+            color: #33ff00;
+            text-shadow: 
+                0 0 10px rgba(51, 255, 0, 1),
+                0 0 20px rgba(51, 255, 0, 0.6);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+        }
+        
+        .btn-label {
+            font-size: 10px;
+            margin-top: 4px;
+            opacity: 0.9;
+            text-shadow: 
+                0 0 8px rgba(51, 255, 0, 1),
+                0 0 15px rgba(51, 255, 0, 0.5);
+        }
+
+        .floating-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 
+                0 5px 35px rgba(51, 255, 0, 1),
+                0 0 70px rgba(51, 255, 0, 0.6),
+                inset 0 0 20px rgba(51, 255, 0, 0.4);
+        }
+
+        .floating-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+
+        .floating-btn.active {
+            background: rgba(255, 150, 50, 0.9);
+            border-color: #ff9900;
+            box-shadow: 
+                0 0 25px rgba(255, 153, 0, 0.8),
+                0 0 50px rgba(255, 153, 0, 0.4),
+                inset 0 0 15px rgba(255, 153, 0, 0.3);
+            color: #ff9900;
+            text-shadow: 
+                0 0 10px rgba(255, 153, 0, 1),
+                0 0 20px rgba(255, 153, 0, 0.6);
+        }
+
+        /* Popup Menus - Open Upward */
+        .popup-menu {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 20, 10, 0.95);
+            border: 2px solid #33ff00;
+            box-shadow: 
+                0 0 40px rgba(51, 255, 0, 0.7),
+                0 0 80px rgba(51, 255, 0, 0.3),
+                inset 0 0 25px rgba(51, 255, 0, 0.15);
+            border-radius: 16px;
+            padding: 20px;
+            z-index: 200;
+            display: none;
+            max-height: 70vh;
+            width: 450px;
+            max-width: calc(100vw - 40px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .popup-menu.show {
+            display: block;
+            animation: popupSlideIn 0.3s ease-out;
+        }
+
+        @keyframes popupSlideIn {
+            from { 
+                opacity: 0; 
+                transform: translateX(-50%) translateY(20px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .popup-header {
+            color: #33ff00;
+            text-shadow: 0 0 10px rgba(51, 255, 0, 0.8);
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .popup-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 50, 50, 0.8);
+            border: 1px solid #ff3333;
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        #infoMenu {
+            top: 90px;
+            right: 20px;
+            width: calc(100% - 40px);
+            max-width: 350px;
+        }
+
+        #statsMenu {
+            bottom: 90px;
+            left: 20px;
+            width: calc(100% - 40px);
+            max-width: 350px;
+        }
+
+        #modeMenu {
+            top: 90px;
+            left: 20px;
+            width: calc(100% - 40px);
+            max-width: 280px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(51, 255, 0, 0.3);
+            color: #33ff00;
+            text-shadow: 0 0 5px rgba(51, 255, 0, 0.5);
+        }
+
+        .info-label {
+            color: #88cc55;
+        }
+
+        .info-value {
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(51, 255, 0, 0.8);
+        }
+
+        .slider-container {
+            margin: 15px 0;
+        }
+
+        .slider-label {
+            color: #88cc55;
+            font-size: 12px;
+            margin-bottom: 8px;
+            display: block;
+            text-shadow: 0 0 5px rgba(51, 255, 0, 0.4);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-top: 8px;
+            -webkit-appearance: none;
+            height: 6px;
+            background: rgba(51, 255, 0, 0.2);
+            border-radius: 3px;
+            outline: none;
+            box-shadow: inset 0 0 5px rgba(51, 255, 0, 0.3);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #33ff00;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(51, 255, 0, 0.8);
+        }
+
+        /* Mode Buttons */
+        .mode-btn {
+            width: 100%;
+            padding: 15px;
+            margin: 8px 0;
+            background: rgba(51, 255, 0, 0.1);
+            border: 2px solid #33ff00;
+            box-shadow: 0 0 15px rgba(51, 255, 0, 0.3), inset 0 0 10px rgba(51, 255, 0, 0.1);
+            border-radius: 8px;
+            color: #33ff00;
+            text-shadow: 0 0 8px rgba(51, 255, 0, 0.6);
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:active {
+            background: rgba(51, 255, 0, 0.3);
+        }
+
+        .mode-btn.active {
+            background: rgba(255, 153, 0, 0.3);
+            border-color: #ff9900;
+            box-shadow: 0 0 20px rgba(255, 153, 0, 0.5), inset 0 0 15px rgba(255, 153, 0, 0.2);
+            color: #ff9900;
+            text-shadow: 0 0 10px rgba(255, 153, 0, 0.8);
+        }
+
+        /* Stats Charts */
+        .chart-container {
+            margin: 15px 0;
+            background: rgba(0, 20, 0, 0.6);
+            border: 1px solid rgba(51, 255, 0, 0.4);
+            box-shadow: 0 0 15px rgba(51, 255, 0, 0.2), inset 0 0 10px rgba(51, 255, 0, 0.05);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .chart-title {
+            color: #33ff00;
+            text-shadow: 0 0 8px rgba(51, 255, 0, 0.7);
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        canvas.chart {
+            width: 100%;
+            height: 150px;
+            display: block;
+        }
+
+        /* Odds Display */
+        .odds-container {
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(51, 255, 0, 0.05);
+            border: 1px solid rgba(51, 255, 0, 0.4);
+            box-shadow: 0 0 15px rgba(51, 255, 0, 0.2), inset 0 0 10px rgba(51, 255, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .odds-header {
+            color: #33ff00;
+            text-shadow: 0 0 8px rgba(51, 255, 0, 0.7);
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .odds-row {
+            display: flex;
+            justify-content: space-around;
+            margin: 10px 0;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .odds-team {
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .odds-label {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .odds-value {
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .odds-bar {
+            width: 100%;
+            height: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .odds-bar-segment {
+            height: 100%;
+            float: left;
+            transition: width 0.3s ease;
+        }
+
+        .trend-text {
+            text-align: center;
+            font-size: 11px;
+            color: #aaa;
+            font-style: italic;
+            margin-top: 8px;
+        }
+
+        /* Game Over Overlay */
+        #gameOverOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 10, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 400;
+            padding: 20px;
+            padding-bottom: 100px;
+            overflow-y: auto;
+        }
+
+        #gameOverOverlay.show {
+            display: flex;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .game-over-content {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .game-over-text {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+        }
+
+        .game-over-subtitle {
+            color: #88cc55;
+            text-shadow: 0 0 10px rgba(51, 255, 0, 0.5);
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .game-over-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .game-over-btn {
+            padding: 15px 30px;
+            background: rgba(51, 255, 0, 0.3);
+            border: 2px solid #33ff00;
+            box-shadow: 0 0 20px rgba(51, 255, 0, 0.5), inset 0 0 15px rgba(51, 255, 0, 0.2);
+            border-radius: 12px;
+            color: #33ff00;
+            text-shadow: 0 0 8px rgba(51, 255, 0, 0.8);
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .game-over-btn.secondary {
+            background: rgba(10, 20, 10, 0.8);
+            color: #33ff00;
+        }
+
+        /* Bomb Animation */
+        .bomb {
+            position: absolute;
+            font-size: 32px;
+            pointer-events: none;
+            z-index: 50;
+            animation: bombDrop 1.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            transform-origin: center center;
+            /* Center the emoji by offsetting by half its size */
+            margin-left: -16px;
+            margin-top: -16px;
+            text-align: center;
+            line-height: 32px;
+            width: 32px;
+            height: 32px;
+        }
+
+        @keyframes bombDrop {
+            0% { transform: translateY(-100vh) rotate(0deg) scale(1); }
+            65% { transform: translateY(0) rotate(360deg) scale(1); }
+            75% { transform: translateY(-35px) rotate(360deg) scale(0.95); }
+            82% { transform: translateY(0) rotate(360deg) scale(1.08); }
+            88% { transform: translateY(-15px) rotate(360deg) scale(0.97); }
+            94% { transform: translateY(0) rotate(360deg) scale(1.04); }
+            97% { transform: translateY(-5px) rotate(360deg) scale(0.99); }
+            100% { transform: translateY(0) rotate(360deg) scale(1); }
+        }
+
+        .explosion {
+            position: absolute;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        .shockwave {
+            position: absolute;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 200, 100, 0.9);
+            background: transparent;
+            animation: shockwaveExpand 0.8s ease-out forwards;
+            pointer-events: none;
+            box-shadow: 
+                0 0 20px rgba(255, 200, 100, 0.8),
+                inset 0 0 20px rgba(255, 200, 100, 0.4);
+        }
+
+        @keyframes shockwaveExpand {
+            0% {
+                width: 0;
+                height: 0;
+                opacity: 1;
+                border-width: 8px;
+                margin-left: 0;
+                margin-top: 0;
+            }
+            50% {
+                opacity: 0.8;
+                border-width: 6px;
+            }
+            100% {
+                width: var(--size);
+                height: var(--size);
+                opacity: 0;
+                border-width: 2px;
+                margin-left: calc(var(--size) / -2);
+                margin-top: calc(var(--size) / -2);
+            }
+        }
+        
+        .falling-cell {
+            position: absolute;
+            pointer-events: none;
+            z-index: 45;
+            border-radius: 2px;
+            animation: cellFall 1s ease-in forwards;
+        }
+        
+        @keyframes cellFall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            20% {
+                transform: translateY(20px) rotate(45deg);
+                opacity: 0.8;
+            }
+            50% {
+                transform: translateY(80px) rotate(180deg);
+                opacity: 0.5;
+            }
+            75% {
+                transform: translateY(150px) rotate(270deg);
+                opacity: 0.2;
+            }
+            100% {
+                transform: translateY(200px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        /* Betting Dialog */
+        #bettingDialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 20, 10, 0.98);
+            border: 3px solid #33ff00;
+            box-shadow: 0 0 40px rgba(51, 255, 0, 0.6), inset 0 0 30px rgba(51, 255, 0, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            z-index: 450;
+            display: none;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        #bettingDialog.show {
+            display: block;
+            animation: dialogAppear 0.4s ease-out;
+        }
+        
+        @keyframes dialogAppear {
+            from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
+        .betting-header {
+            color: #33ff00;
+            text-shadow: 0 0 15px rgba(51, 255, 0, 0.9);
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .betting-label {
+            color: #88cc55;
+            font-size: 14px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 5px rgba(51, 255, 0, 0.4);
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .color-option {
+            padding: 15px;
+            background: rgba(51, 255, 0, 0.1);
+            border: 2px solid #33ff00;
+            border-radius: 10px;
+            color: #33ff00;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        
+        .color-option:hover {
+            background: rgba(51, 255, 0, 0.2);
+            box-shadow: 0 0 15px rgba(51, 255, 0, 0.4);
+        }
+        
+        .color-option.selected {
+            background: rgba(51, 255, 0, 0.3);
+            box-shadow: 0 0 20px rgba(51, 255, 0, 0.6), inset 0 0 15px rgba(51, 255, 0, 0.3);
+            border-color: #88ff44;
+        }
+        
+        .wager-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(10, 20, 10, 0.8);
+            border: 2px solid #33ff00;
+            border-radius: 8px;
+            color: #33ff00;
+            font-size: 16px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 10px rgba(51, 255, 0, 0.2);
+        }
+        
+        .wager-input:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(51, 255, 0, 0.5), inset 0 0 10px rgba(51, 255, 0, 0.3);
+        }
+        
+        .betting-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .bet-btn {
+            flex: 1;
+            padding: 15px;
+            background: rgba(51, 255, 0, 0.3);
+            border: 2px solid #33ff00;
+            box-shadow: 0 0 20px rgba(51, 255, 0, 0.5), inset 0 0 15px rgba(51, 255, 0, 0.2);
+            border-radius: 12px;
+            color: #33ff00;
+            text-shadow: 0 0 8px rgba(51, 255, 0, 0.8);
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        /* Stats Tabs */
+        .stats-tab {
+            flex: 1;
+            padding: 10px;
+            background: rgba(10, 20, 10, 0.6);
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #88cc55;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .stats-tab:hover {
+            color: #33ff00;
+            background: rgba(51, 255, 0, 0.1);
+        }
+        
+        .stats-tab.active {
+            color: #33ff00;
+            text-shadow: 0 0 10px rgba(51, 255, 0, 0.8);
+            border-bottom-color: #33ff00;
+            background: rgba(51, 255, 0, 0.15);
+        }
+        
+        .stats-tab-content {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Welcome Screen */
+        #welcomeScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 20, 10, 0.98);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        #welcomeScreen.hidden {
+            display: none !important;
+        }
+        
+        .welcome-content {
+            max-width: 600px;
+            width: 90%;
+            padding: 40px;
+            background: rgba(10, 20, 10, 0.95);
+            border: 3px solid #33ff00;
+            box-shadow: 0 0 50px rgba(51, 255, 0, 0.7), inset 0 0 40px rgba(51, 255, 0, 0.2);
+            border-radius: 25px;
+            text-align: center;
+            animation: slideIn 0.6s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .welcome-title {
+            font-size: 36px;
+            color: #33ff00;
+            text-shadow: 0 0 20px rgba(51, 255, 0, 1);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .welcome-subtitle {
+            font-size: 18px;
+            color: #88cc55;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-message {
+            color: #88cc55;
+            line-height: 1.8;
+        }
+        
+        .bank-balance {
+            background: rgba(51, 255, 0, 0.1);
+            border: 2px solid #33ff00;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(51, 255, 0, 0.3), inset 0 0 15px rgba(51, 255, 0, 0.1);
+        }
+        
+        /* Desktop/Tablet - Larger Screens */
+        @media (min-width: 769px) {
+            .popup-menu {
+                width: 500px;
+                max-height: 75vh;
+                bottom: 100px;
+            }
+            
+            #bettingDialog {
+                width: 500px;
+                max-height: 80vh;
+            }
+            
+            #gameOverOverlay .game-over-content {
+                max-width: 600px;
+            }
+        }
+        
+        /* Large Desktop - Extra Room */
+        @media (min-width: 1200px) {
+            .popup-menu {
+                width: 550px;
+                max-height: 80vh;
+            }
+            
+            #bettingDialog {
+                width: 550px;
+            }
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .hud-container {
+                height: 70px;
+                gap: 8px;
+                padding: 0 10px;
+            }
+            
+            .floating-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .btn-label {
+                font-size: 8px;
+            }
+            
+            .popup-menu {
+                width: calc(100vw - 20px);
+                max-width: none;
+                left: 10px;
+                right: 10px;
+                transform: none;
+                padding: 15px;
+                max-height: calc(50vh - 80px);
+                font-size: 14px;
+            }
+            
+            #bettingDialog {
+                width: calc(100vw - 20px);
+                padding: 20px;
+                max-height: 80vh;
+            }
+            
+            .betting-header {
+                font-size: 22px;
+            }
+            
+            .color-grid {
+                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+                gap: 8px;
+            }
+            
+            .color-option {
+                padding: 12px;
+                font-size: 13px;
+            }
+            
+            .chart {
+                width: 100% !important;
+                height: 120px !important;
+            }
+            
+            .welcome-content {
+                padding: 30px 20px;
+            }
+            
+            .welcome-title {
+                font-size: 28px;
+            }
+            
+            .game-over-content {
+                width: calc(100vw - 40px);
+                max-width: none;
+            }
+            
+            .game-over-text {
+                font-size: 32px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hud-container {
+                height: 60px;
+                gap: 5px;
+            }
+            
+            .floating-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+            
+            .btn-label {
+                font-size: 7px;
+            }
+            
+            .popup-menu {
+                padding: 12px;
+                font-size: 13px;
+            }
+            
+            #bettingDialog {
+                padding: 15px;
+            }
+            
+            .betting-header {
+                font-size: 18px;
+                margin-bottom: 15px;
+            }
+            
+            .color-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+            }
+            
+            .color-option {
+                padding: 10px;
+                font-size: 12px;
+            }
+            
+            .info-row {
+                font-size: 12px;
+            }
+            
+            .chart-title {
+                font-size: 12px;
+            }
+            
+            .game-over-text {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Small Win History Button (Top Center) -->
+    <button id="miniHistoryBtn" onclick="toggleMiniHistory()" style="
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(10, 20, 10, 0.8);
+        border: 1px solid #33ff00;
+        border-radius: 6px;
+        padding: 4px 8px;
+        color: #33ff00;
+        font-size: 10px;
+        cursor: pointer;
+        z-index: 150;
+        box-shadow: 0 0 15px rgba(51, 255, 0, 0.5);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    " onmouseover="this.style.boxShadow='0 0 25px rgba(51, 255, 0, 0.8)'" onmouseout="this.style.boxShadow='0 0 15px rgba(51, 255, 0, 0.5)'">
+        🎰 <span id="miniHistoryText">HISTORY</span>
+    </button>
+    
+    <!-- Mini Win History Display -->
+    <div id="miniHistoryDisplay" style="
+        position: fixed;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(10, 20, 10, 0.95);
+        border: 2px solid #33ff00;
+        border-radius: 8px;
+        padding: 10px;
+        z-index: 150;
+        display: none;
+        box-shadow: 0 0 30px rgba(51, 255, 0, 0.7);
+        max-width: 90vw;
+    ">
+        <div style="font-size: 11px; color: #88cc55; margin-bottom: 6px; text-align: center;">LAST 10 WINNERS</div>
+        <div id="miniWinnerHistory" style="display: flex; gap: 3px; justify-content: center;"></div>
+    </div>
+
+    <!-- HUD - Minecraft Style Bottom Bar -->
+    <div class="hud-container">
+        <button class="floating-btn" id="modeBtn">
+            <span>⚔</span>
+            <span class="btn-label">MODE</span>
+        </button>
+        <button class="floating-btn" id="infoBtn">
+            <span>i</span>
+            <span class="btn-label">INFO</span>
+        </button>
+        <button class="floating-btn" id="playBtn">
+            <span>▶</span>
+            <span class="btn-label">PLAY</span>
+        </button>
+        <button class="floating-btn" id="statsBtn">
+            <span>■</span>
+            <span class="btn-label">STATS</span>
+        </button>
+        <button class="floating-btn" id="bankBtn">
+            <span>💰</span>
+            <span class="btn-label">BANK</span>
+        </button>
+    </div>
+
+    <!-- Info Menu -->
+    <div class="popup-menu" id="infoMenu">
+        <button class="popup-close" onclick="closeMenu('infoMenu')">✕</button>
+        <div class="popup-header">GAME INFO</div>
+        <div class="info-row">
+            <span class="info-label">Generation:</span>
+            <span class="info-value" id="genDisplay">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Total Population:</span>
+            <span class="info-value" id="popDisplay">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Speed:</span>
+            <span class="info-value" id="speedDisplay">10/sec</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Next Bomb:</span>
+            <span class="info-value" id="bombDisplay">300 gen</span>
+        </div>
+        <div class="slider-container">
+            <label class="slider-label">Speed Control</label>
+            <input type="range" id="speedSlider" min="1" max="60" value="10">
+        </div>
+        <div class="slider-container">
+            <label class="slider-label">Cell Size: <span id="cellSizeValue">8px</span></label>
+            <input type="range" id="cellSizeSlider" min="4" max="16" value="8">
+        </div>
+    </div>
+
+    <!-- Stats Menu -->
+    <div class="popup-menu" id="statsMenu">
+        <button class="popup-close" onclick="closeMenu('statsMenu')">✕</button>
+        <div class="popup-header">STATISTICS</div>
+        
+        <!-- Tab Navigation -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #33ff00;">
+            <button id="liveStatsTab" class="stats-tab active" onclick="switchStatsTab('live')">
+                📊 LIVE STATS
+            </button>
+            <button id="historyTab" class="stats-tab" onclick="switchStatsTab('history')">
+                🎰 WIN HISTORY
+            </button>
+        </div>
+        
+        <!-- Live Stats Tab -->
+        <div id="liveStatsContent" class="stats-tab-content">
+            <!-- Graph Toggle -->
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                <button id="graphRangeToggle" class="bet-btn" onclick="toggleGraphRange()" style="font-size: 12px; padding: 8px 15px;">
+                    📈 Show: Last 20 Gens
+                </button>
+            </div>
+            
+            <!-- Population Graph -->
+            <div class="chart-container">
+                <div class="chart-title">LIVING ORGANISMS BY TEAM</div>
+                <canvas id="popChart" class="chart" width="300" height="150"></canvas>
+            </div>
+
+            <!-- Win Probability -->
+            <div class="odds-container" id="oddsContainer">
+                <div class="odds-header">WIN PROBABILITY</div>
+                <div class="odds-row" id="oddsRow"></div>
+                <div class="odds-bar" id="oddsBar"></div>
+                <div class="trend-text" id="trendText">Analyzing...</div>
+            </div>
+
+            <!-- Win Probability Chart -->
+            <div class="chart-container">
+                <div class="chart-title">WIN PROBABILITY OVER TIME</div>
+                <canvas id="oddsChart" class="chart" width="300" height="150"></canvas>
+            </div>
+        </div>
+        
+        <!-- Win History Tab -->
+        <div id="historyContent" class="stats-tab-content" style="display: none;">
+            <div style="font-size: 16px; color: #33ff00; text-shadow: 0 0 10px rgba(51, 255, 0, 0.8); font-weight: bold; margin-bottom: 15px; text-align: center;">
+                🎰 WINNING HISTORY 🎰
+            </div>
+            
+            <!-- Recent Winners Display -->
+            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid #33ff00; border-radius: 8px; padding: 10px; margin-bottom: 15px;">
+                <div style="font-size: 12px; color: #88cc55; margin-bottom: 8px;">LAST 20 WINNERS:</div>
+                <div id="winnerHistory" style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Team Statistics -->
+            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid #33ff00; border-radius: 8px; padding: 10px;">
+                <div style="font-size: 12px; color: #88cc55; margin-bottom: 8px;">TEAM WIN RATES:</div>
+                <div id="teamWinRates" style="display: flex; flex-direction: column; gap: 5px;">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Casino Stats -->
+            <div style="margin-top: 10px; font-size: 11px; color: #88cc55; display: flex; justify-content: space-between;">
+                <div id="currentStreak">Hot: -</div>
+                <div id="mostFrequent">Most: -</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mode Selection Menu -->
+    <div class="popup-menu" id="modeMenu">
+        <button class="popup-close" onclick="closeMenu('modeMenu')">✕</button>
+        <div class="popup-header">BATTLE MODE</div>
+        <button class="mode-btn" id="mode2Btn" onclick="selectMode(2)">
+            RED vs BLUE<br>
+            <span style="font-size: 12px;">2-TEAM BATTLE</span>
+        </button>
+        <button class="mode-btn" id="mode4Btn" onclick="selectMode(4)">
+            RED YELLOW GREEN BLUE<br>
+            <span style="font-size: 12px;">4-TEAM BATTLE</span>
+        </button>
+        <button class="mode-btn" id="mode8Btn" onclick="selectMode(8)">
+            8 TEAMS<br>
+            <span style="font-size: 12px;">8-TEAM FREE-FOR-ALL</span>
+        </button>
+        <button class="mode-btn" id="mode16Btn" onclick="selectMode(16)">
+            16 TEAMS<br>
+            <span style="font-size: 12px;">16-TEAM CHAOS</span>
+        </button>
+        <div style="margin-top: 15px; color: #88cc55; font-size: 11px; text-align: center; text-shadow: 0 0 5px rgba(51, 255, 0, 0.3);">
+            Bomb drops every 75 generations<br>
+            Destroys enemies in 13.5-cell radius (27 diameter)
+        </div>
+    </div>
+    
+    <!-- Bank Menu -->
+    <div class="popup-menu" id="bankMenu">
+        <button class="popup-close" onclick="closeMenu('bankMenu')">✕</button>
+        <div class="popup-header">💰 YOUR BANK</div>
+        
+        <div class="bank-balance">
+            <div style="font-size: 14px; color: #88cc55;">Current Balance</div>
+            <div style="font-size: 32px; color: #33ff00; text-shadow: 0 0 15px rgba(51, 255, 0, 0.9); font-weight: bold; margin: 10px 0;" id="bankBalance">$500</div>
+        </div>
+        
+        <div class="info-row">
+            <span class="info-label">Total Games:</span>
+            <span class="info-value" id="totalGames">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Wins:</span>
+            <span class="info-value" id="totalWins">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Losses:</span>
+            <span class="info-value" id="totalLosses">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Win Rate:</span>
+            <span class="info-value" id="winRate">0%</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Total Wagered:</span>
+            <span class="info-value" id="totalWagered">$0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Total Winnings:</span>
+            <span class="info-value" id="totalWinnings">$0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Net Profit:</span>
+            <span class="info-value" id="netProfit">$0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Favorite Team:</span>
+            <span class="info-value" id="favoriteTeam">None</span>
+        </div>
+        
+        <button class="bet-btn" onclick="resetBank()" style="margin-top: 15px; width: 100%;">RESET BANK</button>
+    </div>
+
+    <!-- Welcome Screen -->
+    <div id="welcomeScreen">
+        <div class="welcome-content">
+            <div class="welcome-title">🎮 BATTLE OF LIFE 💣</div>
+            <div class="welcome-subtitle">A competitive cellular automaton battle simulator</div>
+            
+            <div class="welcome-message">
+                <div style="font-size: 24px; margin: 20px 0; color: #33ff00; text-shadow: 0 0 20px rgba(51, 255, 0, 0.8);">
+                    🎉 CONGRATULATIONS! 🎉
+                </div>
+                <div style="font-size: 20px; margin: 15px 0; line-height: 1.4;">
+                    You won
+                </div>
+                <div style="font-size: 56px; color: #33ff00; text-shadow: 0 0 30px rgba(51, 255, 0, 1); font-weight: bold; margin: 20px 0;">
+                    $500
+                </div>
+                <div style="font-size: 22px; color: #88cc55; margin: 10px 0; font-weight: bold;">
+                    IN FREE PLAY!
+                </div>
+                <div style="font-size: 16px; color: #88cc55; margin: 20px 0; line-height: 1.6;">
+                    Place your bets, trigger bombs, and watch teams battle for survival!<br>
+                    Choose wisely and may the odds be in your favor!
+                </div>
+            </div>
+            
+            <button class="bet-btn" onclick="closeWelcomeScreen()" style="font-size: 20px; padding: 20px 40px; margin-top: 30px;">
+                START PLAYING
+            </button>
+        </div>
+    </div>
+
+    <!-- Betting Dialog -->
+    <div id="bettingDialog">
+        <div class="betting-header">PLACE YOUR WAGER</div>
+        <div class="betting-label">Select your team:</div>
+        <div class="color-grid" id="colorGrid"></div>
+        <div class="betting-label">Enter wager amount:</div>
+        <div style="position: relative; display: flex; align-items: center;">
+            <span style="position: absolute; left: 15px; color: #33ff00; font-size: 20px; font-weight: bold; text-shadow: 0 0 8px rgba(51, 255, 0, 0.8); pointer-events: none;">$</span>
+            <input type="number" class="wager-input" id="wagerInput" placeholder="Enter amount..." min="1" value="100" style="padding-left: 35px;">
+        </div>
+        <div class="betting-buttons">
+            <button class="bet-btn" onclick="confirmBet()">CONFIRM BET</button>
+            <button class="bet-btn" onclick="skipBet()">SKIP</button>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="gameOverOverlay">
+        <div class="game-over-content">
+            <div class="game-over-text" id="gameOverText"></div>
+            <div class="game-over-subtitle">Stalemate - No changes for 10 generations</div>
+            
+            <!-- Final Statistics -->
+            <div class="chart-container">
+                <div class="chart-title">FINAL POPULATION</div>
+                <canvas id="finalPopChart" class="chart" width="300" height="150"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">FINAL WIN PROBABILITY</div>
+                <canvas id="finalOddsChart" class="chart" width="300" height="150"></canvas>
+            </div>
+            
+            <div class="game-over-buttons">
+                <button class="game-over-btn" onclick="restartGame()">PLAY AGAIN</button>
+                <button class="game-over-btn secondary" onclick="inspectMap()">INSPECT MAP</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game State
+        let grid = [];
+        let nextGrid = [];
+        let teamGrid = [];
+        let rows, cols;
+        let cellSize = 8;
+        
+        let generation = 0;
+        let lastColorCheckGen = 0; // Track when we last checked for single color
+        let singleColorGenCount = 0; // Count generations with only one color
+        let running = false;
+        let gameMode = 0; // 0=none, 2=2team, 4=4team, 8=8team, 16=16team
+        let gameOver = false;
+        let winner = null;
+        let inspecting = false;
+        let showFullGraphRange = false; // Toggle between last 20 gens vs full history
+        let userBet = null; // {team: number, amount: number}
+        let betProcessed = false; // Track if bet money has been deducted
+        
+        // Game history for casino-style stat tracking
+        let gameHistory = []; // Array of {winner: teamNumber, mode: gameMode, generation: number}
+        
+        // Betting
+        let betTeam = null;
+        let betAmount = 0;
+        let pendingMode = 0;
+        
+        // Bank System
+        let bankData = {
+            balance: 500,
+            totalGames: 0,
+            wins: 0,
+            losses: 0,
+            totalWagered: 0,
+            totalWinnings: 0,
+            bets: [], // {team: number, amount: number, won: boolean, payout: number}
+            teamChoices: {} // {teamNumber: count}
+        };
+        
+        // Load bank data from localStorage
+        function loadBankData() {
+            const saved = localStorage.getItem('battleOfLifeBank');
+            if (saved) {
+                try {
+                    bankData = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Failed to load bank data:', e);
+                }
+            }
+            updateBankDisplay();
+        }
+        
+        // Save bank data to localStorage
+        function saveBankData() {
+            try {
+                localStorage.setItem('battleOfLifeBank', JSON.stringify(bankData));
+            } catch (e) {
+                console.error('Failed to save bank data:', e);
+            }
+        }
+        
+        // Load game history from localStorage
+        function loadGameHistory() {
+            const saved = localStorage.getItem('battleOfLifeGameHistory');
+            if (saved) {
+                try {
+                    gameHistory = JSON.parse(saved);
+                    // Keep only last 50 games
+                    if (gameHistory.length > 50) {
+                        gameHistory = gameHistory.slice(-50);
+                        saveGameHistory();
+                    }
+                } catch (e) {
+                    console.error('Failed to load game history:', e);
+                    gameHistory = [];
+                }
+            }
+            updateGameHistory();
+        }
+        
+        // Save game history to localStorage
+        function saveGameHistory() {
+            try {
+                localStorage.setItem('battleOfLifeGameHistory', JSON.stringify(gameHistory));
+            } catch (e) {
+                console.error('Failed to save game history:', e);
+            }
+        }
+        
+        // Add game result to history
+        function recordGameResult(winnerTeam, mode, gens) {
+            gameHistory.push({
+                winner: winnerTeam,
+                mode: mode,
+                generation: gens,
+                timestamp: Date.now()
+            });
+            
+            // Keep only last 50 games
+            if (gameHistory.length > 50) {
+                gameHistory.shift();
+            }
+            
+            saveGameHistory();
+            updateGameHistory();
+        }
+        
+        // Update game history display
+        function updateGameHistory() {
+            const historyContainer = document.getElementById('winnerHistory');
+            if (!historyContainer) return;
+            
+            // Show last 20 winners
+            const recentGames = gameHistory.slice(-20);
+            
+            historyContainer.innerHTML = '';
+            
+            if (recentGames.length === 0) {
+                historyContainer.innerHTML = '<div style="color: #666; font-size: 11px; text-align: center; width: 100%;">No games played yet</div>';
+                return;
+            }
+            
+            // Display recent winners as colored boxes
+            recentGames.forEach(game => {
+                const teamData = TEAM_COLORS[game.winner];
+                const box = document.createElement('div');
+                box.style.cssText = `
+                    width: 28px;
+                    height: 28px;
+                    background: ${teamData.color};
+                    border: 2px solid ${teamData.color};
+                    border-radius: 4px;
+                    box-shadow: 0 0 8px ${teamData.color};
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 10px;
+                    font-weight: bold;
+                    color: #000;
+                    cursor: pointer;
+                `;
+                box.textContent = game.winner;
+                box.title = `${teamData.name} won in ${game.generation} generations`;
+                historyContainer.appendChild(box);
+            });
+            
+            // Calculate team win rates
+            updateTeamWinRates();
+            updateCasinoStats();
+            
+            // Update mini history display if visible
+            updateMiniHistory();
+        }
+        
+        // Update team win rate statistics
+        function updateTeamWinRates() {
+            const ratesContainer = document.getElementById('teamWinRates');
+            if (!ratesContainer) return;
+            
+            if (gameHistory.length === 0) {
+                ratesContainer.innerHTML = '<div style="color: #666; font-size: 11px; text-align: center;">No data yet</div>';
+                return;
+            }
+            
+            // Count wins for each team
+            const winCounts = {};
+            const teamGames = {}; // Track games each team participated in
+            
+            gameHistory.forEach(game => {
+                // Count winner
+                if (!winCounts[game.winner]) {
+                    winCounts[game.winner] = 0;
+                }
+                winCounts[game.winner]++;
+                
+                // Count participation (all teams in that mode played)
+                for (let i = 1; i <= game.mode; i++) {
+                    if (!teamGames[i]) {
+                        teamGames[i] = 0;
+                    }
+                    teamGames[i]++;
+                }
+            });
+            
+            // Create array of team stats
+            const teamStats = [];
+            for (let i = 1; i <= 16; i++) {
+                const wins = winCounts[i] || 0;
+                const games = teamGames[i] || 0;
+                if (games > 0) {
+                    const winRate = (wins / games * 100).toFixed(1);
+                    teamStats.push({
+                        team: i,
+                        wins: wins,
+                        games: games,
+                        winRate: parseFloat(winRate)
+                    });
+                }
+            }
+            
+            // Sort by win rate
+            teamStats.sort((a, b) => b.winRate - a.winRate);
+            
+            // Display top 4 teams
+            ratesContainer.innerHTML = '';
+            teamStats.slice(0, 4).forEach(stat => {
+                const teamData = TEAM_COLORS[stat.team];
+                const row = document.createElement('div');
+                row.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 11px;
+                    padding: 3px 0;
+                `;
+                
+                row.innerHTML = `
+                    <span style="color: ${teamData.color}; text-shadow: 0 0 5px ${teamData.color};">${teamData.name}</span>
+                    <span style="color: #88cc55;">${stat.winRate}% (${stat.wins}/${stat.games})</span>
+                `;
+                
+                ratesContainer.appendChild(row);
+            });
+        }
+        
+        // Update casino-style statistics
+        function updateCasinoStats() {
+            if (gameHistory.length === 0) return;
+            
+            // Calculate current streak
+            let currentTeam = gameHistory[gameHistory.length - 1].winner;
+            let streak = 1;
+            for (let i = gameHistory.length - 2; i >= 0; i--) {
+                if (gameHistory[i].winner === currentTeam) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+            
+            const streakTeam = TEAM_COLORS[currentTeam];
+            const streakEl = document.getElementById('currentStreak');
+            if (streakEl && streak >= 2) {
+                streakEl.innerHTML = `Hot: <span style="color: ${streakTeam.color}; text-shadow: 0 0 5px ${streakTeam.color};">${streakTeam.name} x${streak}</span>`;
+            } else if (streakEl) {
+                streakEl.textContent = 'Hot: -';
+            }
+            
+            // Find most frequent winner
+            const winCounts = {};
+            gameHistory.forEach(game => {
+                winCounts[game.winner] = (winCounts[game.winner] || 0) + 1;
+            });
+            
+            let maxWins = 0;
+            let maxTeam = 1;
+            for (const team in winCounts) {
+                if (winCounts[team] > maxWins) {
+                    maxWins = winCounts[team];
+                    maxTeam = parseInt(team);
+                }
+            }
+            
+            const mostTeam = TEAM_COLORS[maxTeam];
+            const mostEl = document.getElementById('mostFrequent');
+            if (mostEl) {
+                mostEl.innerHTML = `Most: <span style="color: ${mostTeam.color}; text-shadow: 0 0 5px ${mostTeam.color};">${mostTeam.name} (${maxWins})</span>`;
+            }
+        }
+        
+        // Update bank display
+        function updateBankDisplay() {
+            document.getElementById('bankBalance').textContent = '$' + bankData.balance;
+            document.getElementById('totalGames').textContent = bankData.totalGames;
+            document.getElementById('totalWins').textContent = bankData.wins;
+            document.getElementById('totalLosses').textContent = bankData.losses;
+            
+            const winRate = bankData.totalGames > 0 ? 
+                Math.round((bankData.wins / bankData.totalGames) * 100) : 0;
+            document.getElementById('winRate').textContent = winRate + '%';
+            
+            document.getElementById('totalWagered').textContent = '$' + bankData.totalWagered;
+            document.getElementById('totalWinnings').textContent = '$' + bankData.totalWinnings;
+            
+            const netProfit = bankData.totalWinnings - bankData.totalWagered;
+            const profitEl = document.getElementById('netProfit');
+            profitEl.textContent = (netProfit >= 0 ? '+$' : '-$') + Math.abs(netProfit);
+            profitEl.style.color = netProfit >= 0 ? '#33ff00' : '#ff3333';
+            
+            // Find favorite team
+            let favoriteTeam = 'None';
+            let maxCount = 0;
+            for (const team in bankData.teamChoices) {
+                if (bankData.teamChoices[team] > maxCount) {
+                    maxCount = bankData.teamChoices[team];
+                    const teamNum = parseInt(team);
+                    if (TEAM_COLORS[teamNum]) {
+                        favoriteTeam = TEAM_COLORS[teamNum].name;
+                    }
+                }
+            }
+            document.getElementById('favoriteTeam').textContent = favoriteTeam + 
+                (maxCount > 0 ? ` (${maxCount}x)` : '');
+        }
+        
+        // Reset bank
+        function resetBank() {
+            console.log('resetBank called');
+            if (confirm('Reset your balance to $500? (Stats will be kept)')) {
+                console.log('User confirmed reset');
+                
+                // Only reset balance, keep all stats
+                bankData.balance = 500;
+                
+                saveBankData();
+                updateBankDisplay();
+                console.log('Balance reset to $500, stats preserved');
+                alert('Balance reset to $500!');
+            } else {
+                console.log('User cancelled reset');
+            }
+        }
+        
+        // Close welcome screen
+        function closeWelcomeScreen() {
+            const screen = document.getElementById('welcomeScreen');
+            screen.style.display = 'none';
+            screen.classList.add('hidden');
+        }
+        
+        // Check if first visit
+        function checkFirstVisit() {
+            const visited = localStorage.getItem('battleOfLifeVisited');
+            const screen = document.getElementById('welcomeScreen');
+            if (!visited) {
+                screen.style.display = 'flex';
+                screen.classList.remove('hidden');
+                localStorage.setItem('battleOfLifeVisited', 'true');
+            } else {
+                screen.style.display = 'none';
+                screen.classList.add('hidden');
+            }
+        }
+        
+        // Team colors and names (16 teams total)
+        const TEAM_COLORS = [
+            null, // Index 0 unused
+            { name: 'RED', color: '#ff0000', secondary: '#cc0000' },           // Bright red
+            { name: 'BLUE', color: '#0066ff', secondary: '#0044cc' },          // Royal blue
+            { name: 'YELLOW', color: '#ffff00', secondary: '#cccc00' },        // Pure yellow
+            { name: 'GREEN', color: '#00ff00', secondary: '#00cc00' },         // Lime green
+            { name: 'ORANGE', color: '#ff8800', secondary: '#cc6600' },        // Bright orange
+            { name: 'PURPLE', color: '#cc00ff', secondary: '#9900cc' },        // Bright purple
+            { name: 'CYAN', color: '#00ffff', secondary: '#00cccc' },          // Bright cyan
+            { name: 'MAGENTA', color: '#ff00ff', secondary: '#cc00cc' },       // Bright magenta
+            { name: 'LIME', color: '#88ff00', secondary: '#66cc00' },          // Yellow-green
+            { name: 'PINK', color: '#ff66cc', secondary: '#cc3399' },          // Hot pink
+            { name: 'TEAL', color: '#00cc99', secondary: '#009966' },          // Teal
+            { name: 'VIOLET', color: '#8800ff', secondary: '#6600cc' },        // Deep violet
+            { name: 'GOLD', color: '#ffbb00', secondary: '#cc9900' },          // Gold
+            { name: 'CORAL', color: '#ff5555', secondary: '#cc3333' },         // Coral
+            { name: 'AQUA', color: '#00dddd', secondary: '#00aaaa' },          // Aqua
+            { name: 'ROSE', color: '#ff0088', secondary: '#cc0066' }           // Rose
+        ];
+        
+        // History tracking - will dynamically create for active teams
+        let teamHistories = {};
+        let oddsHistories = {};
+        let populationHistory = [];
+        let generationHistory = [];
+        
+        // Bombs
+        let bombs = [];
+        let lastBombGen = 0;
+        let lastBombTrigger = null; // {team: 1-4, generation: number}
+        const BOMB_INTERVAL = 75;
+        const BOMB_RADIUS = 25;  // 50 cells diameter = 25 cells radius
+        
+        // Speed control
+        let speed = 10;
+        let lastFrameTime = 0;
+        let frameInterval = 1000 / speed;
+        
+        // Initialize
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            document.getElementById('speedSlider').addEventListener('input', (e) => {
+                speed = parseInt(e.target.value);
+                frameInterval = 1000 / speed;
+                document.getElementById('speedDisplay').textContent = speed + '/sec';
+            });
+            
+            document.getElementById('cellSizeSlider').addEventListener('input', (e) => {
+                cellSize = parseInt(e.target.value);
+                document.getElementById('cellSizeValue').textContent = cellSize + 'px';
+                resizeCanvas();
+                if (gameMode > 0) {
+                    initializeGame(gameMode);
+                }
+            });
+            
+            requestAnimationFrame(animate);
+        }
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            rows = Math.floor(canvas.height / cellSize);
+            cols = Math.floor(canvas.width / cellSize);
+            
+            if (gameMode > 0 && !inspecting) {
+                initializeGame(gameMode);
+            }
+        }
+        
+        function createGrid() {
+            return Array(rows).fill(null).map(() => Array(cols).fill(0));
+        }
+        
+        function selectMode(mode) {
+            pendingMode = mode;
+            closeMenu('modeMenu');
+            showBettingDialog(mode);
+        }
+        
+        function showBettingDialog(mode) {
+            const colorGrid = document.getElementById('colorGrid');
+            colorGrid.innerHTML = '';
+            
+            // Reset betTeam
+            betTeam = null;
+            
+            // Create color options based on mode
+            for (let i = 1; i <= mode; i++) {
+                const teamData = TEAM_COLORS[i];
+                const option = document.createElement('div');
+                option.className = 'color-option';
+                option.style.color = teamData.color;
+                option.style.borderColor = teamData.color;
+                option.textContent = teamData.name;
+                option.dataset.team = i;
+                
+                // Simple click handler using data attribute
+                option.addEventListener('click', function(e) {
+                    const teamNum = parseInt(e.currentTarget.dataset.team);
+                    console.log('Team clicked:', teamNum);
+                    selectBetTeam(teamNum, e.currentTarget);
+                });
+                
+                colorGrid.appendChild(option);
+            }
+            
+            document.getElementById('bettingDialog').classList.add('show');
+        }
+        
+        function selectBetTeam(team, element) {
+            console.log('selectBetTeam called with team:', team);
+            
+            // Remove selected from all
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            // Add selected to clicked
+            element.classList.add('selected');
+            betTeam = team;
+            
+            console.log('betTeam is now:', betTeam);
+            
+            // Visual confirmation
+            element.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 200);
+        }
+        
+        function confirmBet() {
+            console.log('confirmBet called');
+            const amount = parseInt(document.getElementById('wagerInput').value) || 0;
+            console.log('Bet amount:', amount, 'Bet team:', betTeam);
+            
+            // Check if bet is valid
+            if (!betTeam || amount <= 0) {
+                alert('Please select a team and enter a valid bet amount!');
+                return;
+            }
+            
+            // Check if user has enough balance
+            if (amount > bankData.balance) {
+                alert(`Insufficient funds! You have $${bankData.balance} available.`);
+                return;
+            }
+            
+            console.log('Bet valid, storing for processing when game starts...');
+            
+            // Store the bet but DON'T deduct money yet
+            // Money will be deducted when PLAY button is pressed
+            userBet = { team: betTeam, amount: amount };
+            betProcessed = false; // Mark bet as not yet processed
+            
+            document.getElementById('bettingDialog').classList.remove('show');
+            
+            gameMode = pendingMode;
+            initializeGame(pendingMode);
+            updateModeButtons();
+            
+            console.log('Bet confirmed, press PLAY to start game');
+        }
+        
+        function skipBet() {
+            userBet = null;
+            betTeam = null;
+            betProcessed = false;
+            document.getElementById('bettingDialog').classList.remove('show');
+            
+            gameMode = pendingMode;
+            initializeGame(pendingMode);
+            updateModeButtons();
+        }
+        
+        function updateModeButtons() {
+            document.getElementById('mode2Btn').classList.toggle('active', gameMode === 2);
+            document.getElementById('mode4Btn').classList.toggle('active', gameMode === 4);
+            document.getElementById('mode8Btn').classList.toggle('active', gameMode === 8);
+            document.getElementById('mode16Btn').classList.toggle('active', gameMode === 16);
+        }
+        
+        function initializeGame(mode) {
+            grid = createGrid();
+            teamGrid = createGrid();
+            generation = 0;
+            gameOver = false;
+            winner = null;
+            
+            // Clean up any existing bomb elements
+            bombs.forEach(bomb => {
+                if (bomb.element && bomb.element.parentNode) {
+                    bomb.element.remove();
+                }
+            });
+            bombs = [];
+            
+            lastBombGen = 0;
+            lastBombTrigger = null;
+            inspecting = false;
+            
+            populationHistory = [];
+            generationHistory = [];
+            
+            // Initialize team histories dynamically
+            teamHistories = {};
+            oddsHistories = {};
+            for (let i = 1; i <= mode; i++) {
+                const teamName = TEAM_COLORS[i].name.toLowerCase();
+                teamHistories[teamName] = [];
+                oddsHistories[teamName] = [];
+            }
+            
+            const density = 0.3;
+            const totalCells = rows * cols;
+            const targetCellsPerTeam = Math.floor(totalCells * density / mode);
+            
+            // Helper to shuffle array (Fisher-Yates)
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+            
+            if (mode === 2) {
+                // 2 teams: Left vs Right with random placement
+                const midCol = Math.floor(cols / 2);
+                
+                // Collect all positions for team 1 (left)
+                const team1Positions = [];
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < midCol; j++) {
+                        team1Positions.push({i, j});
+                    }
+                }
+                
+                // Collect all positions for team 2 (right)
+                const team2Positions = [];
+                for (let i = 0; i < rows; i++) {
+                    for (let j = midCol; j < cols; j++) {
+                        team2Positions.push({i, j});
+                    }
+                }
+                
+                // Shuffle and place team 1
+                shuffleArray(team1Positions);
+                for (let idx = 0; idx < targetCellsPerTeam && idx < team1Positions.length; idx++) {
+                    const {i, j} = team1Positions[idx];
+                    grid[i][j] = 1;
+                    teamGrid[i][j] = 1;
+                }
+                
+                // Shuffle and place team 2
+                shuffleArray(team2Positions);
+                for (let idx = 0; idx < targetCellsPerTeam && idx < team2Positions.length; idx++) {
+                    const {i, j} = team2Positions[idx];
+                    grid[i][j] = 1;
+                    teamGrid[i][j] = 2;
+                }
+            } else if (mode === 4) {
+                // 4 teams: Quadrants with random placement
+                const midRow = Math.floor(rows / 2);
+                const midCol = Math.floor(cols / 2);
+                
+                const teamRegions = [
+                    {team: 1, startRow: 0, endRow: midRow, startCol: 0, endCol: midCol},
+                    {team: 2, startRow: 0, endRow: midRow, startCol: midCol, endCol: cols},
+                    {team: 3, startRow: midRow, endRow: rows, startCol: 0, endCol: midCol},
+                    {team: 4, startRow: midRow, endRow: rows, startCol: midCol, endCol: cols}
+                ];
+                
+                for (const region of teamRegions) {
+                    const positions = [];
+                    for (let i = region.startRow; i < region.endRow; i++) {
+                        for (let j = region.startCol; j < region.endCol; j++) {
+                            positions.push({i, j});
+                        }
+                    }
+                    
+                    shuffleArray(positions);
+                    for (let idx = 0; idx < targetCellsPerTeam && idx < positions.length; idx++) {
+                        const {i, j} = positions[idx];
+                        grid[i][j] = 1;
+                        teamGrid[i][j] = region.team;
+                    }
+                }
+            } else if (mode === 8 || mode === 16) {
+                // 8 teams: 2x4 grid, 16 teams: 4x4 grid - with random placement
+                const gridRows = mode === 8 ? 2 : 4;
+                const gridCols = mode === 8 ? 4 : 4;
+                const rowSplit = Math.floor(rows / gridRows);
+                const colSplit = Math.floor(cols / gridCols);
+                
+                let teamNum = 1;
+                for (let row = 0; row < gridRows; row++) {
+                    for (let col = 0; col < gridCols; col++) {
+                        const startRow = row * rowSplit;
+                        const endRow = row === gridRows - 1 ? rows : (row + 1) * rowSplit;
+                        const startCol = col * colSplit;
+                        const endCol = col === gridCols - 1 ? cols : (col + 1) * colSplit;
+                        
+                        // Collect all positions in this region
+                        const positions = [];
+                        for (let i = startRow; i < endRow; i++) {
+                            for (let j = startCol; j < endCol; j++) {
+                                positions.push({i, j});
+                            }
+                        }
+                        
+                        // Shuffle and place cells
+                        shuffleArray(positions);
+                        for (let idx = 0; idx < targetCellsPerTeam && idx < positions.length; idx++) {
+                            const {i, j} = positions[idx];
+                            grid[i][j] = 1;
+                            teamGrid[i][j] = teamNum;
+                        }
+                        
+                        teamNum++;
+                    }
+                }
+            }
+            
+            draw();
+            updateStats();
+        }
+        
+        function countNeighborsByTeam(row, col) {
+            let teamCounts = [];
+            for (let i = 0; i <= gameMode; i++) {
+                teamCounts[i] = 0;
+            }
+            let total = 0;
+            
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const newRow = (row + i + rows) % rows;
+                    const newCol = (col + j + cols) % cols;
+                    
+                    if (grid[newRow][newCol] === 1) {
+                        total++;
+                        const team = teamGrid[newRow][newCol];
+                        if (team >= 1 && team <= gameMode) {
+                            teamCounts[team]++;
+                        }
+                    }
+                }
+            }
+            
+            return { total, teamCounts };
+        }
+        
+        function getMajorityTeam(teamCounts) {
+            let maxCount = 0;
+            let maxTeam = 1;
+            for (let i = 1; i <= gameMode; i++) {
+                if (teamCounts[i] && teamCounts[i] > maxCount) {
+                    maxCount = teamCounts[i];
+                    maxTeam = i;
+                }
+            }
+            return maxTeam;
+        }
+        
+        function nextGeneration() {
+            if (gameOver) return;
+            
+            nextGrid = createGrid();
+            const nextTeamGrid = createGrid();
+            
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const { total, teamCounts } = countNeighborsByTeam(i, j);
+                    const cell = grid[i][j];
+                    const currentTeam = teamGrid[i][j];
+                    
+                    if (cell === 1) {
+                        if (total === 2 || total === 3) {
+                            nextGrid[i][j] = 1;
+                            
+                            const ownCount = teamCounts[currentTeam] || 0;
+                            let maxOtherCount = 0;
+                            let maxOtherTeam = currentTeam;
+                            
+                            for (let t = 1; t <= gameMode; t++) {
+                                if (t !== currentTeam && teamCounts[t] && teamCounts[t] > maxOtherCount) {
+                                    maxOtherCount = teamCounts[t];
+                                    maxOtherTeam = t;
+                                }
+                            }
+                            
+                            if (maxOtherCount >= ownCount * 2 && maxOtherCount >= 2) {
+                                nextTeamGrid[i][j] = maxOtherTeam;
+                            } else {
+                                nextTeamGrid[i][j] = currentTeam;
+                            }
+                        }
+                    } else {
+                        if (total === 3) {
+                            nextGrid[i][j] = 1;
+                            nextTeamGrid[i][j] = getMajorityTeam(teamCounts);
+                        }
+                    }
+                }
+            }
+            
+            grid = nextGrid;
+            teamGrid = nextTeamGrid;
+            generation++;
+            
+            if (generation - lastBombGen >= BOMB_INTERVAL) {
+                dropBomb();
+            }
+            
+            processBombs();
+            updateStats();
+            checkGameOver();
+        }
+        
+        function dropBomb() {
+            const row = Math.floor(Math.random() * rows);
+            const col = Math.floor(Math.random() * cols);
+            
+            const x = col * cellSize + cellSize / 2;
+            const y = row * cellSize + cellSize / 2;
+            
+            const bombEl = document.createElement('div');
+            bombEl.className = 'bomb';
+            bombEl.textContent = '💣';
+            bombEl.style.left = x + 'px';
+            bombEl.style.top = y + 'px';
+            document.body.appendChild(bombEl);
+            
+            const bomb = { 
+                row, 
+                col, 
+                active: true,
+                settled: false,
+                settleGeneration: generation + 1,  // Will be ready next generation
+                element: bombEl  // Store reference to DOM element
+            };
+            
+            bombs.push(bomb);
+            lastBombGen = generation;
+            
+            // Mark as settled after animation completes, but keep element visible
+            setTimeout(() => {
+                bomb.settled = true;
+                // Don't remove element yet - it will be removed when bomb explodes or is cleaned up
+            }, 1300);
+        }
+        
+        function processBombs() {
+            for (let b = bombs.length - 1; b >= 0; b--) {
+                const bomb = bombs[b];
+                if (!bomb.active) continue;
+                
+                // Check if bomb is settled and has waited required time
+                if (!bomb.settled) continue;
+                if (bomb.settleGeneration === null || bomb.settleGeneration === undefined) continue;
+                if (generation <= bomb.settleGeneration) continue; // Wait until after settle generation
+                
+                const bombRow = bomb.row;
+                const bombCol = bomb.col;
+                
+                if (grid[bombRow][bombCol] === 1) {
+                    const triggerTeam = teamGrid[bombRow][bombCol];
+                    console.log(`💣 Bomb triggered by team ${triggerTeam} (${TEAM_COLORS[triggerTeam].name})`);
+                    
+                    // Record bomb trigger for odds calculation
+                    lastBombTrigger = {
+                        team: triggerTeam,
+                        generation: generation
+                    };
+                    
+                    // Create shockwave effect centered on bomb
+                    createShockwave(bombRow, bombCol);
+                    
+                    // Remove bomb element from DOM
+                    if (bomb.element && bomb.element.parentNode) {
+                        bomb.element.remove();
+                    }
+                    
+                    // Collect cells to destroy and convert to trigger team
+                    let destroyedCells = [];
+                    let convertedCount = 0;
+                    
+                    for (let i = 0; i < rows; i++) {
+                        for (let j = 0; j < cols; j++) {
+                            if (grid[i][j] === 1 && teamGrid[i][j] !== triggerTeam) {
+                                const dist = Math.sqrt(
+                                    Math.pow(i - bombRow, 2) + Math.pow(j - bombCol, 2)
+                                );
+                                if (dist <= BOMB_RADIUS) {
+                                    destroyedCells.push({
+                                        row: i,
+                                        col: j,
+                                        team: teamGrid[i][j]
+                                    });
+                                    
+                                    // Convert cell to trigger team instead of destroying
+                                    teamGrid[i][j] = triggerTeam;
+                                    convertedCount++;
+                                    
+                                    // Cell stays alive (grid[i][j] = 1)
+                                    // Only the team changes
+                                }
+                            }
+                        }
+                    }
+                    
+                    console.log(`💥 Converted ${convertedCount} cells to ${TEAM_COLORS[triggerTeam].name}`);
+                    
+                    // Create falling animations for destroyed cells
+                    // These now show the old color falling away
+                    for (const cell of destroyedCells) {
+                        createFallingCell(cell.row, cell.col, cell.team);
+                    }
+                    
+                    // Remove bomb from array
+                    bombs.splice(b, 1);
+                }
+            }
+        }
+        
+        function createFallingCell(row, col, team) {
+            const x = col * cellSize;
+            const y = row * cellSize;
+            
+            // Get color from TEAM_COLORS array
+            const teamData = TEAM_COLORS[team] || TEAM_COLORS[1];
+            const color = teamData.color;
+            
+            const cell = document.createElement('div');
+            cell.className = 'falling-cell';
+            cell.style.left = x + 'px';
+            cell.style.top = y + 'px';
+            cell.style.width = cellSize + 'px';
+            cell.style.height = cellSize + 'px';
+            cell.style.backgroundColor = color;
+            cell.style.boxShadow = `0 0 ${cellSize}px ${color}`;
+            
+            document.body.appendChild(cell);
+            
+            setTimeout(() => cell.remove(), 1000);
+        }
+        
+        function createShockwave(row, col) {
+            const centerX = col * cellSize + cellSize / 2;  // Center of cell
+            const centerY = row * cellSize + cellSize / 2;  // Center of cell
+            const diameter = BOMB_RADIUS * 2 * cellSize;
+            const radius = diameter / 2;
+            
+            // Calculate canvas dimensions
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            
+            // Create main shockwave
+            createSingleShockwave(centerX, centerY, diameter);
+            
+            // Check if we need wrapped versions for toroidal topology
+            const left = centerX - radius;
+            const right = centerX + radius;
+            const top = centerY - radius;
+            const bottom = centerY + radius;
+            
+            // Wrap horizontally
+            if (left < 0) {
+                // Wraps off left edge, create on right side
+                createSingleShockwave(centerX + canvasWidth, centerY, diameter);
+            }
+            if (right > canvasWidth) {
+                // Wraps off right edge, create on left side
+                createSingleShockwave(centerX - canvasWidth, centerY, diameter);
+            }
+            
+            // Wrap vertically
+            if (top < 0) {
+                // Wraps off top edge, create on bottom side
+                createSingleShockwave(centerX, centerY + canvasHeight, diameter);
+            }
+            if (bottom > canvasHeight) {
+                // Wraps off bottom edge, create on top side
+                createSingleShockwave(centerX, centerY - canvasHeight, diameter);
+            }
+            
+            // Handle corners (both horizontal and vertical wrapping)
+            if (left < 0 && top < 0) {
+                createSingleShockwave(centerX + canvasWidth, centerY + canvasHeight, diameter);
+            }
+            if (left < 0 && bottom > canvasHeight) {
+                createSingleShockwave(centerX + canvasWidth, centerY - canvasHeight, diameter);
+            }
+            if (right > canvasWidth && top < 0) {
+                createSingleShockwave(centerX - canvasWidth, centerY + canvasHeight, diameter);
+            }
+            if (right > canvasWidth && bottom > canvasHeight) {
+                createSingleShockwave(centerX - canvasWidth, centerY - canvasHeight, diameter);
+            }
+        }
+        
+        function createSingleShockwave(centerX, centerY, diameter) {
+            const wave = document.createElement('div');
+            wave.className = 'shockwave';
+            // Position the shockwave center at the bomb center
+            wave.style.left = centerX + 'px';
+            wave.style.top = centerY + 'px';
+            wave.style.setProperty('--size', diameter + 'px');
+            document.body.appendChild(wave);
+            
+            setTimeout(() => wave.remove(), 800);
+        }
+        
+        function updateStats() {
+            document.getElementById('genDisplay').textContent = generation;
+            
+            let total = 0;
+            let counts = {};
+            
+            // Initialize counts for all active teams
+            for (let i = 1; i <= gameMode; i++) {
+                const teamName = TEAM_COLORS[i].name.toLowerCase();
+                counts[teamName] = 0;
+            }
+            
+            // Count cells for each team
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    if (grid[i][j] === 1) {
+                        total++;
+                        const team = teamGrid[i][j];
+                        if (team >= 1 && team <= gameMode) {
+                            const teamName = TEAM_COLORS[team].name.toLowerCase();
+                            counts[teamName]++;
+                        }
+                    }
+                }
+            }
+            
+            document.getElementById('popDisplay').textContent = total;
+            document.getElementById('bombDisplay').textContent = 
+                (BOMB_INTERVAL - (generation - lastBombGen)) + ' gen';
+            
+            populationHistory.push(total);
+            if (populationHistory.length > 10) populationHistory.shift();
+            
+            // Update team histories - don't trim, keep full history for final charts
+            for (const teamName in teamHistories) {
+                teamHistories[teamName].push(counts[teamName] || 0);
+            }
+            
+            generationHistory.push(generation);
+            
+            // Calculate and store odds - don't trim, keep full history for final charts
+            const odds = calculateOdds(counts);
+            for (const teamName in oddsHistories) {
+                oddsHistories[teamName].push(odds[teamName] || 0);
+            }
+            
+            updateCharts(counts, odds);
+        }
+        
+        function calculateOdds(counts) {
+            // Calculate total population
+            let total = 0;
+            for (const teamName in counts) {
+                total += counts[teamName];
+            }
+            
+            // If no cells, return equal odds
+            if (total === 0) {
+                let odds = {};
+                const equalOdds = 100 / gameMode;
+                for (let i = 1; i <= gameMode; i++) {
+                    const teamName = TEAM_COLORS[i].name.toLowerCase();
+                    odds[teamName] = equalOdds;
+                }
+                odds.trend = 'No cells';
+                return odds;
+            }
+            
+            // Initialize odds based on population ratio (50% weight)
+            let odds = {};
+            for (const teamName in counts) {
+                // If team has 0 cells, set to 0 and skip calculations
+                if (counts[teamName] === 0) {
+                    odds[teamName] = 0;
+                } else {
+                    odds[teamName] = (counts[teamName] / total) * 50;
+                }
+            }
+            
+            // Add trend bonus (30% weight) - only for teams with cells
+            const firstTeamHistory = Object.values(teamHistories)[0];
+            if (firstTeamHistory && firstTeamHistory.length >= 5) {
+                const recent = 5;
+                let trends = {};
+                
+                for (const teamName in teamHistories) {
+                    if (counts[teamName] > 0) {  // Only calculate for living teams
+                        const hist = teamHistories[teamName];
+                        if (hist.length >= recent) {
+                            const change = hist[hist.length - 1] - hist[hist.length - recent];
+                            trends[teamName] = change;
+                        }
+                    }
+                }
+                
+                const trendValues = Object.values(trends);
+                if (trendValues.length > 0) {
+                    const maxTrend = Math.max(...trendValues);
+                    const minTrend = Math.min(...trendValues);
+                    const range = maxTrend - minTrend;
+                    
+                    if (range > 0) {
+                        for (const teamName in trends) {
+                            const normalized = (trends[teamName] - minTrend) / range;
+                            odds[teamName] = (odds[teamName] || 0) + normalized * 30;
+                        }
+                    }
+                }
+            }
+            
+            // Add territory control bonus (20% weight) - only for teams with cells
+            let territories = {};
+            for (let i = 1; i <= gameMode; i++) {
+                const teamName = TEAM_COLORS[i].name.toLowerCase();
+                territories[teamName] = 0;
+            }
+            
+            const gridSections = 16;
+            const sectionRows = Math.floor(rows / Math.sqrt(gridSections));
+            const sectionCols = Math.floor(cols / Math.sqrt(gridSections));
+            
+            for (let sr = 0; sr < Math.sqrt(gridSections); sr++) {
+                for (let sc = 0; sc < Math.sqrt(gridSections); sc++) {
+                    let sectionTeams = new Set();
+                    for (let i = sr * sectionRows; i < (sr + 1) * sectionRows && i < rows; i++) {
+                        for (let j = sc * sectionCols; j < (sc + 1) * sectionCols && j < cols; j++) {
+                            if (grid[i][j] === 1) {
+                                sectionTeams.add(teamGrid[i][j]);
+                            }
+                        }
+                    }
+                    for (const team of sectionTeams) {
+                        if (team >= 1 && team <= gameMode) {
+                            const teamName = TEAM_COLORS[team].name.toLowerCase();
+                            if (counts[teamName] > 0) {  // Only count for living teams
+                                territories[teamName]++;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            const territoryValues = Object.values(territories);
+            const maxTerr = Math.max(...territoryValues, 1);
+            if (maxTerr > 0) {
+                for (const teamName in territories) {
+                    if (counts[teamName] > 0) {  // Only add bonus for living teams
+                        odds[teamName] = (odds[teamName] || 0) + (territories[teamName] / maxTerr) * 20;
+                    }
+                }
+            }
+            
+            // Bomb trigger bonus (10% boost if triggered within last 10 generations)
+            if (lastBombTrigger && generation - lastBombTrigger.generation <= 10) {
+                const triggerTeam = lastBombTrigger.team;
+                if (triggerTeam >= 1 && triggerTeam <= gameMode) {
+                    const teamName = TEAM_COLORS[triggerTeam].name.toLowerCase();
+                    if (counts[teamName] > 0) {  // Only add bonus if team is alive
+                        odds[teamName] = (odds[teamName] || 0) + 10;
+                    }
+                }
+            }
+            
+            // If game over, set winner to 100% and all others to 0%
+            if (gameOver && winner) {
+                for (const teamName in odds) {
+                    odds[teamName] = 0;
+                }
+                // Extract winning team name from winner string
+                for (let i = 1; i <= gameMode; i++) {
+                    const teamName = TEAM_COLORS[i].name;
+                    if (winner.includes(teamName)) {
+                        odds[teamName.toLowerCase()] = 100;
+                        break;
+                    }
+                }
+            } else {
+                // Normalize to 100% (only among living teams)
+                let sum = 0;
+                for (const teamName in odds) {
+                    if (counts[teamName] > 0) {
+                        sum += odds[teamName];
+                    }
+                }
+                
+                if (sum > 0) {
+                    for (const teamName in odds) {
+                        if (counts[teamName] > 0) {
+                            odds[teamName] = (odds[teamName] / sum) * 100;
+                            odds[teamName] = Math.max(1, Math.min(98, odds[teamName]));
+                        } else {
+                            odds[teamName] = 0;  // Dead teams stay at 0%
+                        }
+                    }
+                } else {
+                    // All teams dead somehow, set all to 0
+                    for (const teamName in odds) {
+                        odds[teamName] = 0;
+                    }
+                }
+            }
+            
+            // Determine trend message
+            let trend = '';
+            const oddsArray = Object.entries(odds).filter(([key]) => key !== 'trend');
+            oddsArray.sort((a, b) => b[1] - a[1]);
+            
+            if (oddsArray.length > 0) {
+                const leader = oddsArray[0];
+                const leaderName = leader[0].toUpperCase();
+                const leaderOdds = leader[1];
+                
+                if (leaderOdds > 70) {
+                    trend = `${leaderName} Dominating!`;
+                } else if (leaderOdds > 55) {
+                    trend = `${leaderName} Leading`;
+                } else {
+                    trend = 'Close Battle!';
+                }
+            }
+            
+            odds.trend = trend;
+            return odds;
+        }
+        
+        function updateCharts(counts, odds) {
+            const oddsRow = document.getElementById('oddsRow');
+            const oddsBar = document.getElementById('oddsBar');
+            const trendText = document.getElementById('trendText');
+            
+            oddsRow.innerHTML = '';
+            oddsBar.innerHTML = '';
+            
+            // Build teams array dynamically based on gameMode
+            const teams = [];
+            for (let i = 1; i <= gameMode; i++) {
+                const teamData = TEAM_COLORS[i];
+                teams.push({
+                    name: teamData.name.toLowerCase(),
+                    label: teamData.name.length > 4 ? teamData.name.substring(0, 3) : teamData.name,
+                    color: teamData.color
+                });
+            }
+            
+            // If more than 8 teams, split into two rows
+            if (gameMode > 8) {
+                // Create two rows
+                const topRow = document.createElement('div');
+                topRow.style.display = 'flex';
+                topRow.style.justifyContent = 'space-around';
+                topRow.style.flexWrap = 'wrap';
+                topRow.style.marginBottom = '5px';
+                topRow.style.gap = '4px';
+                
+                const bottomRow = document.createElement('div');
+                bottomRow.style.display = 'flex';
+                bottomRow.style.justifyContent = 'space-around';
+                bottomRow.style.flexWrap = 'wrap';
+                bottomRow.style.gap = '4px';
+                
+                for (let i = 0; i < teams.length; i++) {
+                    const team = teams[i];
+                    const oddsValue = odds[team.name] || 0;
+                    
+                    const teamDiv = document.createElement('div');
+                    teamDiv.className = 'odds-team';
+                    teamDiv.style.minWidth = '0';
+                    teamDiv.style.flex = '0 0 auto';
+                    teamDiv.style.maxWidth = '11%';
+                    teamDiv.style.overflow = 'hidden';
+                    teamDiv.innerHTML = `
+                        <div class="odds-label" style="color: ${team.color}; font-size: 9px; white-space: nowrap;">${team.label}</div>
+                        <div class="odds-value" style="color: ${team.color}; font-size: 10px; white-space: nowrap;">${Math.round(oddsValue)}%</div>
+                    `;
+                    
+                    if (i < 8) {
+                        topRow.appendChild(teamDiv);
+                    } else {
+                        bottomRow.appendChild(teamDiv);
+                    }
+                }
+                
+                oddsRow.appendChild(topRow);
+                oddsRow.appendChild(bottomRow);
+            } else {
+                // Original single row layout for 8 or fewer teams
+                for (const team of teams) {
+                    const oddsValue = odds[team.name] || 0;
+                    
+                    const teamDiv = document.createElement('div');
+                    teamDiv.className = 'odds-team';
+                    teamDiv.innerHTML = `
+                        <div class="odds-label" style="color: ${team.color}">${team.label}</div>
+                        <div class="odds-value" style="color: ${team.color}">${Math.round(oddsValue)}%</div>
+                    `;
+                    oddsRow.appendChild(teamDiv);
+                }
+            }
+            
+            // Build odds bar (unchanged)
+            for (const team of teams) {
+                const oddsValue = odds[team.name] || 0;
+                const segment = document.createElement('div');
+                segment.className = 'odds-bar-segment';
+                segment.style.width = oddsValue + '%';
+                segment.style.background = team.color;
+                oddsBar.appendChild(segment);
+            }
+            
+            trendText.textContent = odds.trend;
+            
+            drawPopulationChart('popChart');
+            drawOddsChart('oddsChart');
+        }
+        
+        function drawPopulationChart(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#0a0e0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const firstTeamHistory = Object.values(teamHistories)[0];
+            if (!firstTeamHistory || firstTeamHistory.length < 2) {
+                ctx.fillStyle = '#88cc55';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Collecting data...', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+            
+            // Calculate max population across all teams
+            let allValues = [];
+            for (const teamName in teamHistories) {
+                allValues = allValues.concat(teamHistories[teamName]);
+            }
+            const maxPop = Math.max(...allValues, 1);
+            
+            const padding = 35;
+            const graphWidth = canvas.width - padding * 2;
+            const graphHeight = canvas.height - padding * 2;
+            
+            // For final charts, show full history; for live charts, respect toggle
+            const isFinalChart = canvasId === 'finalPopChart';
+            let maxPoints;
+            if (isFinalChart) {
+                maxPoints = firstTeamHistory.length; // Always show full for final
+            } else if (showFullGraphRange) {
+                maxPoints = firstTeamHistory.length; // Show full history
+            } else {
+                maxPoints = 20; // Show last 20 generations
+            }
+            const startIdx = Math.max(0, firstTeamHistory.length - maxPoints);
+            
+            // Draw axis labels (population scale)
+            ctx.fillStyle = '#88cc55';
+            ctx.font = '11px monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            
+            // Max population at top
+            const topY = padding;
+            ctx.fillText(maxPop.toString(), padding - 5, topY);
+            
+            // Half max at middle
+            const midY = padding + graphHeight / 2;
+            ctx.fillText(Math.round(maxPop / 2).toString(), padding - 5, midY);
+            
+            // 0 at bottom
+            const bottomY = canvas.height - padding;
+            ctx.fillText('0', padding - 5, bottomY);
+            
+            // Draw generation labels at bottom (only for final chart)
+            if (isFinalChart && generationHistory.length > 0) {
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillStyle = '#88cc55';
+                ctx.font = '10px monospace';
+                
+                const finalGen = generation;
+                const midGen = Math.floor(finalGen / 2);
+                
+                // Gen 0
+                ctx.fillText('Gen 0', padding, canvas.height - padding + 5);
+                
+                // Midpoint
+                const midX = padding + graphWidth / 2;
+                ctx.fillText(`Gen ${midGen}`, midX, canvas.height - padding + 5);
+                
+                // Final generation
+                ctx.fillText(`Gen ${finalGen}`, canvas.width - padding, canvas.height - padding + 5);
+            }
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (graphHeight / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+            }
+            
+            // Draw line for each team
+            const drawLine = (data, color) => {
+                if (data.length < 2) return;
+                const display = data.slice(startIdx);
+                
+                ctx.strokeStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 8;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                
+                for (let i = 0; i < display.length; i++) {
+                    const x = padding + (graphWidth / (display.length - 1)) * i;
+                    const y = canvas.height - padding - (display[i] / maxPop) * graphHeight;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            };
+            
+            // Draw all team lines
+            for (let i = 1; i <= gameMode; i++) {
+                const teamName = TEAM_COLORS[i].name.toLowerCase();
+                if (teamHistories[teamName]) {
+                    drawLine(teamHistories[teamName], TEAM_COLORS[i].color);
+                }
+            }
+        }
+        
+        function drawOddsChart(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#0a0e0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const firstOddsHistory = Object.values(oddsHistories)[0];
+            if (!firstOddsHistory || firstOddsHistory.length < 2) {
+                ctx.fillStyle = '#88cc55';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Collecting data...', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+            
+            const padding = 35;
+            const graphWidth = canvas.width - padding * 2;
+            const graphHeight = canvas.height - padding * 2;
+            
+            // For final charts, show full history; for live charts, respect toggle
+            const isFinalChart = canvasId === 'finalOddsChart';
+            let maxPoints;
+            if (isFinalChart) {
+                maxPoints = firstOddsHistory.length; // Always show full for final
+            } else if (showFullGraphRange) {
+                maxPoints = firstOddsHistory.length; // Show full history
+            } else {
+                maxPoints = 20; // Show last 20 generations
+            }
+            const startIdx = Math.max(0, firstOddsHistory.length - maxPoints);
+            
+            // Draw axis labels (0%, 50%, 100%)
+            ctx.fillStyle = '#88cc55';
+            ctx.font = '11px monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            
+            // 100% at top
+            const topY = padding;
+            ctx.fillText('100%', padding - 5, topY);
+            
+            // 50% at middle
+            const midY = padding + graphHeight / 2;
+            ctx.fillText('50%', padding - 5, midY);
+            
+            // 0% at bottom
+            const bottomY = canvas.height - padding;
+            ctx.fillText('0%', padding - 5, bottomY);
+            
+            // Draw generation labels at bottom (only for final chart)
+            if (isFinalChart && generationHistory.length > 0) {
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillStyle = '#88cc55';
+                ctx.font = '10px monospace';
+                
+                const finalGen = generation;
+                const midGen = Math.floor(finalGen / 2);
+                
+                // Gen 0
+                ctx.fillText('Gen 0', padding, canvas.height - padding + 5);
+                
+                // Midpoint
+                const midX = padding + graphWidth / 2;
+                ctx.fillText(`Gen ${midGen}`, midX, canvas.height - padding + 5);
+                
+                // Final generation
+                ctx.fillText(`Gen ${finalGen}`, canvas.width - padding, canvas.height - padding + 5);
+            }
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (graphHeight / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+            }
+            
+            // Draw 50% midline (more prominent)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(padding, midY);
+            ctx.lineTo(canvas.width - padding, midY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw line for each team
+            const drawLine = (data, color) => {
+                if (data.length < 2) return;
+                const display = data.slice(startIdx);
+                
+                ctx.strokeStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 8;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                
+                for (let i = 0; i < display.length; i++) {
+                    const x = padding + (graphWidth / (display.length - 1)) * i;
+                    const y = canvas.height - padding - (display[i] / 100) * graphHeight;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            };
+            
+            // Draw all team lines
+            for (let i = 1; i <= gameMode; i++) {
+                const teamName = TEAM_COLORS[i].name.toLowerCase();
+                if (oddsHistories[teamName]) {
+                    drawLine(oddsHistories[teamName], TEAM_COLORS[i].color);
+                }
+            }
+        }
+        
+        function checkGameOver() {
+            if (gameOver) return;
+            
+            const currentPop = populationHistory[populationHistory.length - 1];
+            
+            // Check for single color dominance (auto-win after 5 generations)
+            if (generation > 10) { // Only check after initial setup
+                // Count how many different teams have cells
+                let activeteams = new Set();
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        if (grid[i][j] === 1) {
+                            activeteams.add(teamGrid[i][j]);
+                        }
+                    }
+                }
+                
+                if (activeteams.size === 1 && currentPop > 0) {
+                    // Only one color left!
+                    if (singleColorGenCount === 0) {
+                        lastColorCheckGen = generation;
+                        console.log(`Single color detected at generation ${generation}`);
+                    }
+                    singleColorGenCount++;
+                    
+                    // Auto-win after 5 generations of single color
+                    if (singleColorGenCount >= 5) {
+                        console.log('Game Over: Single color dominance for 5 generations');
+                        const winningTeam = Array.from(activeteams)[0];
+                        
+                        winner = TEAM_COLORS[winningTeam].name + ' WINS!';
+                        console.log('Winner:', winner, '(by elimination)');
+                        
+                        // Handle bet payout
+                        if (userBet) {
+                            if (userBet.team === winningTeam) {
+                                const payout = userBet.amount * gameMode;
+                                bankData.balance += userBet.amount + payout;
+                                bankData.wins++;
+                                bankData.totalWinnings += payout;
+                                bankData.bets.push({
+                                    team: userBet.team,
+                                    amount: userBet.amount,
+                                    won: true,
+                                    payout: payout
+                                });
+                                winner += ` (You won $${payout}!)`;
+                            } else {
+                                bankData.losses++;
+                                bankData.bets.push({
+                                    team: userBet.team,
+                                    amount: userBet.amount,
+                                    won: false,
+                                    payout: 0
+                                });
+                                winner += ` (You lost $${userBet.amount})`;
+                            }
+                            saveBankData();
+                            updateBankDisplay();
+                        }
+                        
+                        // Record game result
+                        recordGameResult(winningTeam, gameMode, generation);
+                        
+                        gameOver = true;
+                        running = false;
+                        
+                        // Record final odds
+                        const finalOdds = {};
+                        for (let i = 1; i <= gameMode; i++) {
+                            const teamName = TEAM_COLORS[i].name.toLowerCase();
+                            finalOdds[teamName] = (i === winningTeam) ? 100 : 0;
+                        }
+                        for (const teamName in oddsHistories) {
+                            oddsHistories[teamName].push(finalOdds[teamName] || 0);
+                        }
+                        
+                        showGameOver();
+                        return;
+                    }
+                } else {
+                    // Multiple colors exist, reset counter
+                    singleColorGenCount = 0;
+                }
+            }
+            
+            // Check if we have at least 10 generations of history
+            if (populationHistory.length >= 10) {
+                // Get last 10 generations
+                const last10 = populationHistory.slice(-10);
+                const allSame = last10.every(p => p === last10[0]);
+                
+                if (allSame && currentPop > 0) {
+                    console.log('Game Over: Stalemate detected - no changes for 10 generations');
+                    
+                    // Count cells for each team
+                    let counts = {};
+                    for (let i = 1; i <= gameMode; i++) {
+                        const teamName = TEAM_COLORS[i].name.toLowerCase();
+                        counts[teamName] = 0;
+                    }
+                    
+                    for (let i = 0; i < rows; i++) {
+                        for (let j = 0; j < cols; j++) {
+                            if (grid[i][j] === 1) {
+                                const team = teamGrid[i][j];
+                                if (team >= 1 && team <= gameMode) {
+                                    const teamName = TEAM_COLORS[team].name.toLowerCase();
+                                    counts[teamName]++;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Find team with most cells
+                    let maxCount = 0;
+                    let winningTeam = 1;
+                    for (let i = 1; i <= gameMode; i++) {
+                        const teamName = TEAM_COLORS[i].name.toLowerCase();
+                        if (counts[teamName] > maxCount) {
+                            maxCount = counts[teamName];
+                            winningTeam = i;
+                        }
+                    }
+                    
+                    winner = TEAM_COLORS[winningTeam].name + ' WINS!';
+                    console.log('Winner:', winner);
+                    
+                    // Handle bet payout
+                    if (userBet) {
+                        if (userBet.team === winningTeam) {
+                            // User won!
+                            const payout = userBet.amount * gameMode;
+                            bankData.balance += userBet.amount + payout; // Return bet + winnings
+                            bankData.wins++;
+                            bankData.totalWinnings += payout;
+                            bankData.bets.push({
+                                team: userBet.team,
+                                amount: userBet.amount,
+                                won: true,
+                                payout: payout
+                            });
+                            winner += ` (You won $${payout}!)`;
+                        } else {
+                            // User lost
+                            bankData.losses++;
+                            bankData.bets.push({
+                                team: userBet.team,
+                                amount: userBet.amount,
+                                won: false,
+                                payout: 0
+                            });
+                            winner += ` (You lost $${userBet.amount})`;
+                        }
+                        
+                        saveBankData();
+                        updateBankDisplay();
+                    }
+                    
+                    // Record game result in history
+                    recordGameResult(winningTeam, gameMode, generation);
+                    
+                    gameOver = true;
+                    running = false;
+                    
+                    // Record final odds: winner at 100%, all others at 0%
+                    const finalOdds = {};
+                    for (let i = 1; i <= gameMode; i++) {
+                        const teamName = TEAM_COLORS[i].name.toLowerCase();
+                        if (i === winningTeam) {
+                            finalOdds[teamName] = 100;
+                        } else {
+                            finalOdds[teamName] = 0;
+                        }
+                    }
+                    
+                    // Push final odds to history
+                    for (const teamName in oddsHistories) {
+                        oddsHistories[teamName].push(finalOdds[teamName] || 0);
+                    }
+                    
+                    showGameOver();
+                }
+            }
+        }
+        
+        function showGameOver() {
+            const overlay = document.getElementById('gameOverOverlay');
+            const text = document.getElementById('gameOverText');
+            text.textContent = winner;
+            
+            // Set text color based on winning team
+            for (let i = 1; i <= gameMode; i++) {
+                const teamName = TEAM_COLORS[i].name;
+                if (winner.includes(teamName)) {
+                    text.style.color = TEAM_COLORS[i].color;
+                    break;
+                }
+            }
+            
+            // Draw final charts
+            drawPopulationChart('finalPopChart');
+            drawOddsChart('finalOddsChart');
+            
+            overlay.classList.add('show');
+            setButtonIcon('playBtn', '▶');
+            document.getElementById('playBtn').classList.remove('active');
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOverOverlay').classList.remove('show');
+            if (gameMode > 0) {
+                initializeGame(gameMode);
+            }
+        }
+        
+        function inspectMap() {
+            document.getElementById('gameOverOverlay').classList.remove('show');
+            inspecting = true;
+            draw();
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#0a0e0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Safety check - don't draw if grids aren't initialized
+            if (!grid || !teamGrid || grid.length === 0) return;
+            
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    if (grid[i] && grid[i][j] === 1) {
+                        const x = j * cellSize;
+                        const y = i * cellSize;
+                        const team = teamGrid[i] ? teamGrid[i][j] : 0;
+                        
+                        // Get color from TEAM_COLORS array
+                        const teamData = TEAM_COLORS[team] || TEAM_COLORS[1];
+                        const color = { p: teamData.color, s: teamData.secondary };
+                        
+                        // Enhanced glow layer
+                        ctx.shadowColor = color.p;
+                        ctx.shadowBlur = cellSize * 1.5;
+                        
+                        const gradient = ctx.createRadialGradient(
+                            x + cellSize/2, y + cellSize/2, 0,
+                            x + cellSize/2, y + cellSize/2, cellSize/1.5
+                        );
+                        gradient.addColorStop(0, color.p);
+                        gradient.addColorStop(0.7, color.s);
+                        gradient.addColorStop(1, color.p + '00');
+                        
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(x, y, cellSize, cellSize);
+                        
+                        // Brighter inner cell with strong glow
+                        ctx.shadowColor = color.p;
+                        ctx.shadowBlur = cellSize;
+                        ctx.fillStyle = color.p;
+                        ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+            
+            for (const bomb of bombs) {
+                if (bomb.active && bomb.settled) {
+                    const x = bomb.col * cellSize;
+                    const y = bomb.row * cellSize;
+                    
+                    // Check if ready to trigger (generation after settling)
+                    const readyToTrigger = bomb.settleGeneration !== null && 
+                                         bomb.settleGeneration !== undefined &&
+                                         generation > bomb.settleGeneration;
+                    
+                    if (readyToTrigger) {
+                        // Pulsing glow effect when armed
+                        const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+                        ctx.shadowColor = `rgba(255, 200, 100, ${pulse})`;
+                        ctx.shadowBlur = cellSize * 3;
+                    } else {
+                        // Dim glow when not ready
+                        ctx.shadowColor = 'rgba(255, 153, 0, 0.3)';
+                        ctx.shadowBlur = cellSize;
+                    }
+                    
+                    ctx.font = (cellSize * 3) + 'px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💣', x + cellSize/2, y + cellSize/2);
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+        
+        function animate(timestamp) {
+            // Always draw to show bomb pulse animations
+            if (!inspecting) {
+                draw();
+            }
+            
+            // Only process generations when running
+            if (running && !gameOver && !inspecting) {
+                const elapsed = timestamp - lastFrameTime;
+                if (elapsed >= frameInterval) {
+                    nextGeneration();
+                    lastFrameTime = timestamp;
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Helper function to change button icon while preserving label
+        function setButtonIcon(buttonId, icon) {
+            const btn = document.getElementById(buttonId);
+            const spans = btn.getElementsByTagName('span');
+            if (spans.length > 0) {
+                spans[0].textContent = icon;
+            }
+        }
+        
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (gameMode === 0) {
+                alert('Please select a battle mode first!');
+                openMenu('modeMenu');
+                return;
+            }
+            
+            if (inspecting) {
+                inspecting = false;
+                running = false;
+                initializeGame(gameMode);
+                return;
+            }
+            
+            running = !running;
+            const btn = document.getElementById('playBtn');
+            if (running) {
+                // Process bet if not already processed
+                if (userBet && !betProcessed) {
+                    console.log('Processing bet: deducting $' + userBet.amount);
+                    
+                    // Deduct bet from balance
+                    bankData.balance -= userBet.amount;
+                    bankData.totalWagered += userBet.amount;
+                    bankData.totalGames++;
+                    
+                    // Track team choice
+                    if (!bankData.teamChoices[userBet.team]) {
+                        bankData.teamChoices[userBet.team] = 0;
+                    }
+                    bankData.teamChoices[userBet.team]++;
+                    
+                    betProcessed = true;
+                    
+                    saveBankData();
+                    updateBankDisplay();
+                    
+                    console.log('Bet processed, game started');
+                }
+                
+                setButtonIcon('playBtn', '⏸');
+                btn.classList.add('active');
+            } else {
+                setButtonIcon('playBtn', '▶');
+                btn.classList.remove('active');
+            }
+        });
+        
+        document.getElementById('infoBtn').addEventListener('click', () => {
+            toggleMenu('infoMenu');
+        });
+        
+        document.getElementById('statsBtn').addEventListener('click', () => {
+            toggleMenu('statsMenu');
+        });
+        
+        document.getElementById('modeBtn').addEventListener('click', () => {
+            toggleMenu('modeMenu');
+        });
+        
+        document.getElementById('bankBtn').addEventListener('click', () => {
+            toggleMenu('bankMenu');
+        });
+        
+        function toggleMenu(id) {
+            const menu = document.getElementById(id);
+            const isOpen = menu.classList.contains('show');
+            
+            // Close all menus and betting dialog
+            document.querySelectorAll('.popup-menu').forEach(m => m.classList.remove('show'));
+            document.getElementById('bettingDialog').classList.remove('show');
+            
+            if (!isOpen) {
+                menu.classList.add('show');
+            }
+        }
+        
+        function openMenu(id) {
+            // Close all menus and betting dialog
+            document.querySelectorAll('.popup-menu').forEach(m => m.classList.remove('show'));
+            document.getElementById('bettingDialog').classList.remove('show');
+            document.getElementById(id).classList.add('show');
+        }
+        
+        function closeMenu(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+        
+        // Switch stats tabs
+        function switchStatsTab(tab) {
+            // Update tab buttons
+            document.getElementById('liveStatsTab').classList.toggle('active', tab === 'live');
+            document.getElementById('historyTab').classList.toggle('active', tab === 'history');
+            
+            // Update content visibility
+            document.getElementById('liveStatsContent').style.display = tab === 'live' ? 'block' : 'none';
+            document.getElementById('historyContent').style.display = tab === 'history' ? 'block' : 'none';
+        }
+        
+        // Toggle graph range (last 20 gens vs full history)
+        function toggleGraphRange() {
+            showFullGraphRange = !showFullGraphRange;
+            const btn = document.getElementById('graphRangeToggle');
+            if (showFullGraphRange) {
+                btn.textContent = '📈 Show: Full History';
+            } else {
+                btn.textContent = '📈 Show: Last 20 Gens';
+            }
+            // Redraw charts
+            drawPopulationChart('popChart');
+            drawOddsChart('oddsChart');
+        }
+        
+        // Toggle mini win history display
+        function toggleMiniHistory() {
+            const display = document.getElementById('miniHistoryDisplay');
+            const isVisible = display.style.display === 'flex';
+            display.style.display = isVisible ? 'none' : 'flex';
+            
+            if (!isVisible) {
+                // Update mini history when shown
+                updateMiniHistory();
+            }
+        }
+        
+        // Update mini win history (top 10 recent)
+        function updateMiniHistory() {
+            const container = document.getElementById('miniWinnerHistory');
+            if (!container) return;
+            
+            const recentGames = gameHistory.slice(-10);
+            container.innerHTML = '';
+            
+            if (recentGames.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-size: 10px;">No games yet</div>';
+                return;
+            }
+            
+            recentGames.forEach(game => {
+                const teamData = TEAM_COLORS[game.winner];
+                const box = document.createElement('div');
+                box.style.cssText = `
+                    width: 20px;
+                    height: 20px;
+                    background: ${teamData.color};
+                    border: 1px solid ${teamData.color};
+                    border-radius: 3px;
+                    box-shadow: 0 0 5px ${teamData.color};
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 9px;
+                    font-weight: bold;
+                    color: #000;
+                `;
+                box.textContent = game.winner;
+                box.title = `${teamData.name} - Gen ${game.generation}`;
+                container.appendChild(box);
+            });
+        }
+        
+        // Initialize bank and check first visit
+        loadBankData();
+        loadGameHistory();
+        checkFirstVisit();
+        
+        init();
+    </script>
+</body>
+</html>

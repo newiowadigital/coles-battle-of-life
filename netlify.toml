@@ -1,0 +1,13 @@
+[build]
+  command = "npm install"
+  functions = "netlify/functions"
+  publish = "."
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[dev]
+  functions = "netlify/functions"
+  port = 8888

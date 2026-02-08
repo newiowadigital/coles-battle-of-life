@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle of Life - Multiplayer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Orbitron', monospace;
+            background: #000;
+            color: #33ff00;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        /* Multiplayer UI */
+        .mp-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 10, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            padding: 20px;
+        }
+        
+        .mp-overlay.show {
+            display: flex;
+        }
+        
+        .mp-container {
+            background: rgba(10, 20, 10, 0.98);
+            border: 3px solid #33ff00;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 0 40px rgba(51, 255, 0, 0.6);
+            text-align: center;
+        }
+        
+        .mp-title {
+            font-size: 32px;
+            color: #33ff00;
+            text-shadow: 0 0 20px rgba(51, 255, 0, 0.9);
+            margin-bottom: 30px;
+        }
+        
+        .mp-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #33ff00;
+            border-radius: 10px;
+            color: #33ff00;
+            text-align: center;
+            font-family: 'Orbitron', monospace;
+            margin-bottom: 15px;
+            text-shadow: 0 0 8px rgba(51, 255, 0, 0.8);
+        }
+        
+        .mp-input::placeholder {
+            color: #88cc55;
+        }
+        
+        .mp-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #33ff00 0%, #00cc00 100%);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: bold;
+            font-family: 'Orbitron', monospace;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        .mp-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(51, 255, 0, 0.8);
+        }
+        
+        .mp-btn-secondary {
+            background: linear-gradient(135deg, #666 0%, #444 100%);
+        }
+        
+        .join-code-display {
+            font-size: 48px;
+            color: #33ff00;
+            text-shadow: 0 0 30px rgba(51, 255, 0, 1);
+            letter-spacing: 8px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(51, 255, 0, 0.1);
+            border-radius: 10px;
+        }
+        
+        .player-list {
+            text-align: left;
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .player-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(51, 255, 0, 0.1);
+            border-left: 3px solid #33ff00;
+            border-radius: 5px;
+        }
+        
+        .player-ready {
+            color: #33ff00;
+            float: right;
+        }
+        
+        .player-waiting {
+            color: #888;
+            float: right;
+        }
+        
+        .error-msg {
+            color: #ff3300;
+            text-shadow: 0 0 10px rgba(255, 51, 0, 0.8);
+            margin: 10px 0;
+        }
+        
+        .info-text {
+            color: #88cc55;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(51, 255, 0, 0.3);
+            border-top: 3px solid #33ff00;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .mode-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .mode-option {
+            padding: 15px;
+            background: rgba(51, 255, 0, 0.1);
+            border: 2px solid #33ff00;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .mode-option:hover {
+            background: rgba(51, 255, 0, 0.2);
+            box-shadow: 0 0 15px rgba(51, 255, 0, 0.5);
+        }
+        
+        .mode-option.selected {
+            background: rgba(51, 255, 0, 0.3);
+            box-shadow: 0 0 20px rgba(51, 255, 0, 0.7);
+        }
+        
+        /* Status indicator */
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(10, 20, 10, 0.9);
+            border: 2px solid #33ff00;
+            border-radius: 10px;
+            z-index: 600;
+            display: none;
+        }
+        
+        .status-indicator.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Main Menu -->
+    <div class="mp-overlay" id="mainMenu">
+        <div class="mp-container">
+            <div class="mp-title">🎮 BATTLE OF LIFE</div>
+            <div class="info-text">Multiplayer Mode</div>
+            
+            <input type="text" class="mp-input" id="usernameInput" placeholder="Enter your username" maxlength="20">
+            
+            <button class="mp-btn" onclick="showCreateRoom()">CREATE ROOM</button>
+            <button class="mp-btn" onclick="showJoinRoom()">JOIN ROOM</button>
+            <button class="mp-btn-secondary mp-btn" onclick="playSolo()">PLAY SOLO</button>
+            
+            <div class="error-msg" id="mainError"></div>
+        </div>
+    </div>
+    
+    <!-- Create Room -->
+    <div class="mp-overlay" id="createRoomMenu">
+        <div class="mp-container">
+            <div class="mp-title">CREATE ROOM</div>
+            
+            <div class="info-text">Select game mode:</div>
+            <div class="mode-selector">
+                <div class="mode-option" onclick="selectMode(2)">
+                    <div style="font-size: 20px;">2 TEAMS</div>
+                    <div style="font-size: 12px;">Classic</div>
+                </div>
+                <div class="mode-option" onclick="selectMode(4)">
+                    <div style="font-size: 20px;">4 TEAMS</div>
+                    <div style="font-size: 12px;">Free-for-all</div>
+                </div>
+                <div class="mode-option" onclick="selectMode(8)">
+                    <div style="font-size: 20px;">8 TEAMS</div>
+                    <div style="font-size: 12px;">Chaos</div>
+                </div>
+                <div class="mode-option" onclick="selectMode(16)">
+                    <div style="font-size: 20px;">16 TEAMS</div>
+                    <div style="font-size: 12px;">Maximum</div>
+                </div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <label style="font-size: 14px;">Custom teams (2-16):</label>
+                <input type="number" class="mp-input" id="customTeams" min="2" max="16" placeholder="e.g., 5">
+            </div>
+            
+            <button class="mp-btn" onclick="createRoom()">CREATE & GET CODE</button>
+            <button class="mp-btn-secondary mp-btn" onclick="backToMain()">BACK</button>
+            
+            <div id="createSpinner" style="display: none;">
+                <div class="spinner"></div>
+                <div class="info-text">Creating room...</div>
+            </div>
+            
+            <div class="error-msg" id="createError"></div>
+        </div>
+    </div>
+    
+    <!-- Join Room -->
+    <div class="mp-overlay" id="joinRoomMenu">
+        <div class="mp-container">
+            <div class="mp-title">JOIN ROOM</div>
+            
+            <input type="text" class="mp-input" id="joinCodeInput" placeholder="Enter 6-digit code" maxlength="6" style="text-transform: uppercase;">
+            
+            <button class="mp-btn" onclick="joinRoom()">JOIN ROOM</button>
+            <button class="mp-btn-secondary mp-btn" onclick="backToMain()">BACK</button>
+            
+            <div id="joinSpinner" style="display: none;">
+                <div class="spinner"></div>
+                <div class="info-text">Joining room...</div>
+            </div>
+            
+            <div class="error-msg" id="joinError"></div>
+        </div>
+    </div>
+    
+    <!-- Lobby / Waiting Room -->
+    <div class="mp-overlay" id="lobbyMenu">
+        <div class="mp-container">
+            <div class="mp-title">GAME LOBBY</div>
+            
+            <div class="info-text">Share this code with friends:</div>
+            <div class="join-code-display" id="lobbyCode">ABC123</div>
+            
+            <div class="info-text" id="lobbyModeInfo">4 TEAMS - Free-for-all</div>
+            
+            <div class="info-text" style="margin-top: 20px;">Players in lobby:</div>
+            <div class="player-list" id="playerList">
+                <!-- Players will be added here -->
+            </div>
+            
+            <div class="info-text" id="readyStatus">Waiting for players...</div>
+            
+            <button class="mp-btn" id="readyBtn" onclick="toggleReady()">I'M READY</button>
+            <button class="mp-btn-secondary mp-btn" onclick="leaveRoom()">LEAVE ROOM</button>
+            
+            <div class="error-msg" id="lobbyError"></div>
+        </div>
+    </div>
+    
+    <!-- Status Indicator -->
+    <div class="status-indicator" id="statusIndicator">
+        <span id="statusText">Connected</span>
+    </div>
+
+    <script>
+        // ============================================
+        // MULTIPLAYER STATE & CONFIG
+        // ============================================
+        
+        // API Configuration - CHANGE THIS TO YOUR NETLIFY URL
+        const API_BASE = '/.netlify/functions'; // Local development
+        // const API_BASE = 'https://your-site.netlify.app/.netlify/functions'; // Production
+        
+        let currentUser = {
+            id: null,
+            username: '',
+            roomId: null,
+            isHost: false,
+            isReady: false,
+            team: null,
+            bet: 0
+        };
+        
+        let currentRoom = {
+            id: null,
+            code: '',
+            mode: 4,
+            players: [],
+            status: 'waiting', // waiting, playing, finished
+            gameState: null
+        };
+        
+        let selectedMode = 4;
+        let pollingInterval = null;
+        
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        
+        function generateUserId() {
+            return 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+        }
+        
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.textContent = message;
+                setTimeout(() => el.textContent = '', 5000);
+            }
+        }
+        
+        function showStatus(message, duration = 3000) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            text.textContent = message;
+            indicator.classList.add('show');
+            if (duration) {
+                setTimeout(() => indicator.classList.remove('show'), duration);
+            }
+        }
+        
+        function hideAllMenus() {
+            document.querySelectorAll('.mp-overlay').forEach(el => el.classList.remove('show'));
+        }
+        
+        function showMenu(menuId) {
+            hideAllMenus();
+            document.getElementById(menuId).classList.add('show');
+        }
+        
+        // ============================================
+        // NAVIGATION
+        // ============================================
+        
+        function showCreateRoom() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) {
+                showError('mainError', 'Please enter a username');
+                return;
+            }
+            currentUser.username = username;
+            currentUser.id = generateUserId();
+            showMenu('createRoomMenu');
+        }
+        
+        function showJoinRoom() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) {
+                showError('mainError', 'Please enter a username');
+                return;
+            }
+            currentUser.username = username;
+            currentUser.id = generateUserId();
+            showMenu('joinRoomMenu');
+        }
+        
+        function backToMain() {
+            showMenu('mainMenu');
+        }
+        
+        function playSolo() {
+            // Load original single-player game
+            window.location.href = 'battle-of-life.html';
+        }
+        
+        // ============================================
+        // MODE SELECTION
+        // ============================================
+        
+        function selectMode(mode) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('selected'));
+            event.target.closest('.mode-option').classList.add('selected');
+        }
+        
+        // ============================================
+        // API CALLS
+        // ============================================
+        
+        async function createRoom() {
+            const customTeams = document.getElementById('customTeams').value;
+            const mode = customTeams ? parseInt(customTeams) : selectedMode;
+            
+            if (mode < 2 || mode > 16) {
+                showError('createError', 'Please select a valid mode (2-16 teams)');
+                return;
+            }
+            
+            document.getElementById('createSpinner').style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/create-room`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        username: currentUser.username,
+                        mode: mode
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create room');
+                }
+                
+                currentRoom.id = data.roomId;
+                currentRoom.code = data.joinCode;
+                currentRoom.mode = mode;
+                currentUser.roomId = data.roomId;
+                currentUser.isHost = true;
+                
+                enterLobby();
+                
+            } catch (error) {
+                console.error('Create room error:', error);
+                showError('createError', error.message);
+            } finally {
+                document.getElementById('createSpinner').style.display = 'none';
+            }
+        }
+        
+        async function joinRoom() {
+            const joinCode = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+            
+            if (!joinCode || joinCode.length !== 6) {
+                showError('joinError', 'Please enter a valid 6-digit code');
+                return;
+            }
+            
+            document.getElementById('joinSpinner').style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE}/join-room`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        username: currentUser.username,
+                        joinCode: joinCode
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to join room');
+                }
+                
+                currentRoom.id = data.roomId;
+                currentRoom.code = joinCode;
+                currentRoom.mode = data.mode;
+                currentUser.roomId = data.roomId;
+                
+                enterLobby();
+                
+            } catch (error) {
+                console.error('Join room error:', error);
+                showError('joinError', error.message);
+            } finally {
+                document.getElementById('joinSpinner').style.display = 'none';
+            }
+        }
+        
+        async function toggleReady() {
+            currentUser.isReady = !currentUser.isReady;
+            
+            try {
+                await fetch(`${API_BASE}/player-ready`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        roomId: currentRoom.id,
+                        ready: currentUser.isReady
+                    })
+                });
+                
+                updateReadyButton();
+                
+            } catch (error) {
+                console.error('Ready toggle error:', error);
+                showError('lobbyError', 'Failed to update ready status');
+            }
+        }
+        
+        async function leaveRoom() {
+            try {
+                await fetch(`${API_BASE}/leave-room`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        roomId: currentRoom.id
+                    })
+                });
+                
+                stopPolling();
+                backToMain();
+                
+            } catch (error) {
+                console.error('Leave room error:', error);
+            }
+        }
+        
+        // ============================================
+        // LOBBY MANAGEMENT
+        // ============================================
+        
+        function enterLobby() {
+            showMenu('lobbyMenu');
+            document.getElementById('lobbyCode').textContent = currentRoom.code;
+            document.getElementById('lobbyModeInfo').textContent = `${currentRoom.mode} TEAMS`;
+            
+            updateReadyButton();
+            startPolling();
+        }
+        
+        function updateReadyButton() {
+            const btn = document.getElementById('readyBtn');
+            if (currentUser.isReady) {
+                btn.textContent = 'NOT READY';
+                btn.style.background = 'linear-gradient(135deg, #ff3300 0%, #cc0000 100%)';
+            } else {
+                btn.textContent = "I'M READY";
+                btn.style.background = 'linear-gradient(135deg, #33ff00 0%, #00cc00 100%)';
+            }
+        }
+        
+        function updatePlayerList(players) {
+            const list = document.getElementById('playerList');
+            list.innerHTML = '';
+            
+            players.forEach(player => {
+                const div = document.createElement('div');
+                div.className = 'player-item';
+                div.innerHTML = `
+                    ${player.username}
+                    ${player.isHost ? ' 👑' : ''}
+                    <span class="${player.ready ? 'player-ready' : 'player-waiting'}">
+                        ${player.ready ? '✓ Ready' : '○ Waiting'}
+                    </span>
+                `;
+                list.appendChild(div);
+            });
+            
+            const readyCount = players.filter(p => p.ready).length;
+            const total = players.length;
+            const status = document.getElementById('readyStatus');
+            
+            if (readyCount === total && total >= 2) {
+                status.textContent = 'All players ready! Game starting...';
+                status.style.color = '#33ff00';
+            } else {
+                status.textContent = `${readyCount}/${total} players ready (need at least 2)`;
+                status.style.color = '#88cc55';
+            }
+        }
+        
+        // ============================================
+        // POLLING
+        // ============================================
+        
+        function startPolling() {
+            if (pollingInterval) return;
+            
+            pollRoomState();
+            pollingInterval = setInterval(pollRoomState, 2000); // Poll every 2 seconds
+        }
+        
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+        
+        async function pollRoomState() {
+            if (!currentRoom.id) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/room-state?roomId=${currentRoom.id}&userId=${currentUser.id}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to get room state');
+                }
+                
+                currentRoom.status = data.status;
+                currentRoom.players = data.players;
+                
+                updatePlayerList(data.players);
+                
+                if (data.status === 'playing' && !gameStarted) {
+                    startMultiplayerGame(data);
+                }
+                
+            } catch (error) {
+                console.error('Polling error:', error);
+                // Don't show error to user for polling failures
+            }
+        }
+        
+        // ============================================
+        // GAME START
+        // ============================================
+        
+        let gameStarted = false;
+        
+        function startMultiplayerGame(roomData) {
+            gameStarted = true;
+            stopPolling();
+            hideAllMenus();
+            
+            showStatus('Game Starting!', 2000);
+            
+            // TODO: Initialize the actual game with roomData
+            // This would connect to your existing game logic
+            console.log('Starting game with data:', roomData);
+        }
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        window.addEventListener('load', () => {
+            showMenu('mainMenu');
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (currentRoom.id) {
+                leaveRoom();
+            }
+        });
+    </script>
+</body>
+</html>
